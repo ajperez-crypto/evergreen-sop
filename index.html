@@ -1,0 +1,2123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>OnCall SOP Flowchart - Evergreen Edition</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              navy: '#0b2847',
+              dark: '#081c33',
+              blue: '#1b4d7e',
+              teal: '#0ea5e9',
+              accent: '#38bdf8',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    /* Dot grid canvas pattern */
+    .canvas-grid {
+      background-color: #f8fafc;
+      background-image: radial-gradient(#cbd5e1 1.2px, transparent 1.2px);
+      background-size: 24px 24px;
+    }
+    
+    /* Prevent text selection while panning */
+    .no-select {
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    /* Agent Read-Only Mode Restrictions */
+    body.agent-mode .manager-only {
+      display: none !important;
+    }
+    body.agent-mode .quick-spawn-btn {
+      display: none !important;
+    }
+    body.agent-mode .node-element {
+      cursor: pointer !important;
+    }
+
+    /* Print layout optimization */
+    @media print {
+      body * {
+        visibility: hidden;
+      }
+      #print-area, #print-area * {
+        visibility: visible;
+      }
+      #print-area {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+      }
+      .no-print {
+        display: none !important;
+      }
+    }
+
+    /* Scrollbars */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #f1f5f9;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #94a3b8;
+    }
+  </style>
+</head>
+<body class="agent-mode h-screen w-screen overflow-hidden flex flex-col font-sans bg-slate-100 text-slate-800 antialiased select-none">
+
+  <!-- TOP EXECUTIVE NAVBAR -->
+  <header class="h-14 bg-[#0b2847] border-b border-[#163b63] text-white flex items-center justify-between px-3 z-30 shrink-0 shadow-md">
+    <div class="flex items-center space-x-3">
+      <div class="flex items-center space-x-2 pr-3 border-r border-slate-700">
+        <!-- Evergreen Pine Tree SVG Logo -->
+        <div class="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center p-1 border border-cyan-400/40">
+          <svg viewBox="0 0 100 100" class="w-full h-full fill-none stroke-cyan-400 stroke-[5] stroke-linecap-round">
+            <circle cx="50" cy="50" r="44" stroke="#38bdf8" stroke-width="4"/>
+            <path d="M50 16 L28 42 L40 42 L22 66 L44 66 L36 84 L64 84 L56 66 L78 66 L60 42 L72 42 Z" stroke="white" stroke-width="4" fill="none"/>
+            <line x1="50" y1="84" x2="50" y2="92" stroke="#38bdf8" stroke-width="5"/>
+          </svg>
+        </div>
+        <div class="group relative">
+          <div class="flex items-center gap-1.5">
+            <h1 id="header-main-title" contenteditable="false" spellcheck="false" title="Double click or unlock Manager Mode to edit" class="text-xs sm:text-sm font-bold tracking-tight text-white flex items-center gap-1.5 outline-none rounded px-1 -mx-1 hover:bg-white/10 transition cursor-default">
+              OnCall SOP Flowchart
+            </h1>
+            <span id="header-version-badge" contenteditable="false" spellcheck="false" title="Click to edit badge" class="bg-cyan-500/20 text-cyan-300 text-[10px] px-1.5 py-0.5 rounded font-mono font-medium border border-cyan-400/30 outline-none hover:bg-cyan-500/30 transition cursor-default">
+              V20 - Evergreen
+            </span>
+          </div>
+          <p id="header-sub-title" contenteditable="false" spellcheck="false" title="Click to edit subtitle" class="text-[9px] text-slate-300 leading-none outline-none rounded px-1 -mx-1 hover:bg-white/10 transition cursor-default mt-0.5">
+            Cornerstone Caregiving Support Center
+          </p>
+        </div>
+      </div>
+
+      <!-- Role Mode Status Badge & Toggle -->
+      <div class="flex items-center space-x-1.5">
+        <div id="role-badge" class="flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-semibold bg-emerald-950/80 text-emerald-300 border border-emerald-600/50 shadow-sm">
+          <i data-lucide="shield-check" class="w-3.5 h-3.5 text-emerald-400"></i>
+          <span id="role-text">Agent View (Read-Only)</span>
+        </div>
+        <button id="btn-toggle-role" class="bg-sky-700 hover:bg-sky-600 text-white font-medium px-2.5 py-1 rounded text-xs flex items-center gap-1 border border-sky-500 shadow-sm transition">
+          <i id="role-btn-icon" data-lucide="lock" class="w-3.5 h-3.5"></i>
+          <span id="role-btn-label">Unlock Manager Mode</span>
+        </button>
+      </div>
+
+      <!-- Action Buttons (Manager Only) -->
+      <div class="hidden lg:flex items-center space-x-1.5 text-xs manager-only">
+        <button id="btn-start-flow" class="bg-cyan-600 hover:bg-cyan-500 text-white font-medium px-2.5 py-1.5 rounded flex items-center gap-1 transition shadow-sm">
+          <i data-lucide="plus-circle" class="w-3.5 h-3.5"></i>
+          <span>+ Start Flow</span>
+        </button>
+        <button id="btn-undo" title="Undo (Ctrl+Z)" class="bg-slate-800 hover:bg-slate-700 text-slate-200 px-2 py-1.5 rounded flex items-center gap-1 border border-slate-700">
+          <i data-lucide="undo-2" class="w-3.5 h-3.5"></i>
+          <span>Undo</span>
+        </button>
+        <button id="btn-redo" title="Redo (Ctrl+Y)" class="bg-slate-800 hover:bg-slate-700 text-slate-200 px-2 py-1.5 rounded flex items-center gap-1 border border-slate-700">
+          <i data-lucide="redo-2" class="w-3.5 h-3.5"></i>
+          <span>Redo</span>
+        </button>
+        <button id="btn-auto-layout" class="bg-slate-800 hover:bg-slate-700 text-slate-200 px-2.5 py-1.5 rounded flex items-center gap-1 border border-slate-700">
+          <i data-lucide="align-vertical-space-around" class="w-3.5 h-3.5"></i>
+          <span>Arrange Flow</span>
+        </button>
+        <button id="btn-connect-mode" class="bg-slate-800 hover:bg-slate-700 text-slate-200 px-2.5 py-1.5 rounded flex items-center gap-1 border border-slate-700">
+          <i data-lucide="git-commit" class="w-3.5 h-3.5"></i>
+          <span>Connect Selected</span>
+        </button>
+        <button id="btn-delete-node" class="bg-rose-950/80 hover:bg-rose-800 text-rose-200 px-2 py-1.5 rounded flex items-center gap-1 border border-rose-800/60">
+          <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+          <span>Delete</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Right Controls: Save, Export, Print -->
+    <div class="flex items-center space-x-1 sm:space-x-1.5 text-xs">
+      <button id="btn-json-export" title="Backup JSON file" class="bg-slate-800 hover:bg-slate-700 text-slate-200 px-2 py-1.5 rounded border border-slate-700 hidden sm:flex items-center gap-1">
+        <i data-lucide="download" class="w-3.5 h-3.5"></i>
+        <span>Backup JSON</span>
+      </button>
+      <label class="bg-slate-800 hover:bg-slate-700 text-slate-200 px-2 py-1.5 rounded border border-slate-700 cursor-pointer hidden sm:flex items-center gap-1 manager-only">
+        <i data-lucide="upload" class="w-3.5 h-3.5"></i>
+        <span>Open Project</span>
+        <input type="file" id="input-json-import" accept=".json" class="hidden">
+      </label>
+      <button id="btn-export-svg" class="bg-slate-800 hover:bg-slate-700 text-slate-200 px-2 py-1.5 rounded border border-slate-700 flex items-center gap-1">
+        <i data-lucide="image" class="w-3.5 h-3.5"></i>
+        <span>Export SVG</span>
+      </button>
+      <button id="btn-print" class="bg-slate-800 hover:bg-slate-700 text-slate-200 px-2.5 py-1.5 rounded border border-slate-700 flex items-center gap-1">
+        <i data-lucide="printer" class="w-3.5 h-3.5"></i>
+        <span>Print / PDF</span>
+      </button>
+      <button id="btn-clear" title="Clear current canvas" class="bg-slate-800 hover:bg-slate-700 text-slate-300 px-2 py-1.5 rounded border border-slate-700 manager-only">
+        New Blank
+      </button>
+    </div>
+  </header>
+
+  <!-- MAIN WORKSPACE CONTAINER -->
+  <div class="flex-1 flex overflow-hidden relative">
+
+    <!-- LEFT SIDEBAR -->
+    <aside id="left-sidebar" class="w-72 bg-slate-50 border-r border-slate-200 flex flex-col z-20 shrink-0 text-xs shadow-sm transition-all duration-200 overflow-hidden">
+      <!-- Tabs header -->
+      <div class="p-3 bg-white border-b border-slate-200 flex items-center justify-between">
+        <div class="flex items-center space-x-1.5 font-bold text-slate-800">
+          <i data-lucide="folder-tree" class="w-4 h-4 text-[#0b2847]"></i>
+          <span>My Processes</span>
+        </div>
+        <button id="btn-new-tab" class="text-xs bg-sky-600 hover:bg-sky-500 text-white font-medium px-2 py-1 rounded flex items-center gap-1 shadow-sm transition manager-only">
+          <i data-lucide="plus" class="w-3 h-3"></i>
+          <span>New tab</span>
+        </button>
+      </div>
+
+      <!-- Process Tabs List (Scrollable) -->
+      <div class="p-2 border-b border-slate-200 bg-slate-100/70">
+        <p class="text-[10px] text-slate-500 mb-2 leading-tight">
+          Click a tab to open it. Double-click to rename. Changes save automatically to local storage.
+        </p>
+        <div id="tabs-container" class="space-y-1.5 max-h-48 overflow-y-auto pr-1">
+          <!-- Dynamic Process Tabs inserted here -->
+        </div>
+      </div>
+
+      <!-- Quick Insert SOP Templates (Cornerstone Official Documents) -->
+      <div class="p-3 border-b border-slate-200 bg-white">
+        <div class="text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-2 flex items-center gap-1">
+          <i data-lucide="book-open" class="w-3.5 h-3.5 text-blue-600"></i>
+          <span>Evergreen SOP Templates</span>
+        </div>
+        <div class="grid grid-cols-1 gap-1.5">
+          <button data-template="missed-clockin" class="template-btn text-left px-2.5 py-1.5 bg-slate-50 hover:bg-sky-50 hover:border-sky-300 border border-slate-200 rounded text-slate-700 flex items-center justify-between transition">
+            <span class="font-medium truncate">1. Missed Clock In Flow</span>
+            <i data-lucide="arrow-right" class="w-3 h-3 text-slate-400"></i>
+          </button>
+          <button data-template="caregiver-callout" class="template-btn text-left px-2.5 py-1.5 bg-slate-50 hover:bg-sky-50 hover:border-sky-300 border border-slate-200 rounded text-slate-700 flex items-center justify-between transition">
+            <span class="font-medium truncate">2. Caregiver Call-Out</span>
+            <i data-lucide="arrow-right" class="w-3 h-3 text-slate-400"></i>
+          </button>
+          <button data-template="visit-cancellation" class="template-btn text-left px-2.5 py-1.5 bg-slate-50 hover:bg-sky-50 hover:border-sky-300 border border-slate-200 rounded text-slate-700 flex items-center justify-between transition">
+            <span class="font-medium truncate">3. Visit Cancellation (&lt;24h vs &gt;24h)</span>
+            <i data-lucide="arrow-right" class="w-3 h-3 text-slate-400"></i>
+          </button>
+          <button data-template="emergency-fall" class="template-btn text-left px-2.5 py-1.5 bg-slate-50 hover:bg-sky-50 hover:border-sky-300 border border-slate-200 rounded text-slate-700 flex items-center justify-between transition">
+            <span class="font-medium truncate">4. Emergency / Fall Protocol</span>
+            <i data-lucide="arrow-right" class="w-3 h-3 text-slate-400"></i>
+          </button>
+          <button data-template="va-essentials" class="template-btn text-left px-2.5 py-1.5 bg-slate-50 hover:bg-sky-50 hover:border-sky-300 border border-slate-200 rounded text-slate-700 flex items-center justify-between transition">
+            <span class="font-medium truncate">5. VA Essentials Protocol</span>
+            <i data-lucide="arrow-right" class="w-3 h-3 text-slate-400"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- Quick Instructions Box (Image 1 side notes) -->
+      <div class="flex-1 overflow-y-auto p-3 text-[11px] text-slate-600 space-y-3 bg-slate-50">
+        <div>
+          <span class="font-bold text-slate-800 block text-xs mb-1">⚡ Fastest Way to Build</span>
+          <ol class="list-decimal list-inside space-y-1 text-slate-600 pl-0.5">
+            <li>Click <strong class="text-slate-800">+ Start Flow</strong> or pick a template.</li>
+            <li>Click the <strong class="text-cyan-600">+ inside any box</strong> to spawn next step.</li>
+            <li>Select <strong class="text-slate-700">Process</strong>, <strong class="text-amber-600">Decision</strong>, or <strong class="text-rose-600">Escalation</strong>.</li>
+            <li>Double-click any box to edit text instantly.</li>
+          </ol>
+        </div>
+
+        <div class="border-t border-slate-200 pt-2">
+          <span class="font-bold text-slate-800 block text-xs mb-1">🖐️ Move & Pan Canvas</span>
+          <p class="text-slate-500 leading-snug">
+            Click & drag any blank canvas area to pan in all directions. Use mouse wheel to zoom in/out.
+          </p>
+        </div>
+
+        <div class="border-t border-slate-200 pt-2">
+          <span class="font-bold text-slate-800 block text-xs mb-1">🔗 Manual Connection</span>
+          <p class="text-slate-500 leading-snug">
+            Select Node A, then hold Shift and click Node B, then click <strong class="text-slate-700">Connect Selected</strong>.
+          </p>
+        </div>
+
+        <!-- Pillar Motto -->
+        <div class="bg-blue-50 border border-blue-200 rounded p-2 text-blue-900 mt-2">
+          <span class="font-bold text-[10px] uppercase tracking-wide block text-blue-800">Evergreen Support</span>
+          <p class="text-[10px] italic">"We are people helping people! Treat every call with urgency and empathy."</p>
+        </div>
+      </div>
+    </aside>
+
+    <!-- CENTER FLOWCHART CANVAS -->
+    <main class="flex-1 relative overflow-hidden flex flex-col bg-slate-200">
+      
+      <!-- Floating Canvas Zoom & Utility Toolbar -->
+      <div class="absolute top-3 right-4 z-20 flex items-center bg-white/95 backdrop-blur-sm border border-slate-300 rounded-lg shadow-md p-1 space-x-1 text-xs">
+        <button id="btn-zoom-in" title="Zoom In" class="w-7 h-7 flex items-center justify-center rounded hover:bg-slate-100 text-slate-700">
+          <i data-lucide="zoom-in" class="w-4 h-4"></i>
+        </button>
+        <span id="zoom-label" class="px-1 text-[11px] font-mono text-slate-600 select-none min-w-[42px] text-center">100%</span>
+        <button id="btn-zoom-out" title="Zoom Out" class="w-7 h-7 flex items-center justify-center rounded hover:bg-slate-100 text-slate-700">
+          <i data-lucide="zoom-out" class="w-4 h-4"></i>
+        </button>
+        <button id="btn-zoom-reset" title="Reset View" class="w-7 h-7 flex items-center justify-center rounded hover:bg-slate-100 text-slate-700">
+          <i data-lucide="maximize" class="w-3.5 h-3.5"></i>
+        </button>
+        <div class="h-4 w-px bg-slate-300 mx-0.5"></div>
+        <button id="btn-toggle-inspector" title="Toggle Details Panel" class="px-2 py-1 flex items-center gap-1 rounded hover:bg-slate-100 text-slate-700">
+          <i data-lucide="panel-right" class="w-3.5 h-3.5"></i>
+          <span class="hidden sm:inline text-[11px]">Inspector</span>
+        </button>
+      </div>
+
+      <!-- Quick Add Palette Bar (Float top center - Manager Only) -->
+      <div class="absolute top-3 left-1/2 transform -translate-x-1/2 z-20 flex items-center bg-white/95 backdrop-blur-sm border border-slate-300 rounded-full shadow-md px-3 py-1 space-x-2 text-xs manager-only">
+        <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider pr-1">Add Node:</span>
+        <button id="palette-add-start" class="px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-800 hover:bg-emerald-200 font-medium flex items-center gap-1 border border-emerald-300 transition text-[11px]">
+          <span class="w-2 h-2 rounded-full bg-emerald-600"></span> Start / Trigger
+        </button>
+        <button id="palette-add-process" class="px-2.5 py-1 rounded-full bg-sky-100 text-sky-800 hover:bg-sky-200 font-medium flex items-center gap-1 border border-sky-300 transition text-[11px]">
+          <span class="w-2 h-2 rounded-sm bg-sky-600"></span> Process Step
+        </button>
+        <button id="palette-add-decision" class="px-2.5 py-1 rounded-full bg-amber-100 text-amber-900 hover:bg-amber-200 font-medium flex items-center gap-1 border border-amber-300 transition text-[11px]">
+          <span class="w-2 h-2 rotate-45 bg-amber-600 inline-block"></span> Decision / Question
+        </button>
+        <button id="palette-add-alert" class="px-2.5 py-1 rounded-full bg-rose-100 text-rose-900 hover:bg-rose-200 font-medium flex items-center gap-1 border border-rose-300 transition text-[11px]">
+          <span class="w-2 h-2 rounded-full bg-rose-600"></span> MOD Escalation
+        </button>
+      </div>
+
+      <!-- Draggable, Pannable Infinite Canvas Area -->
+      <div id="canvas-viewport" class="w-full h-full relative overflow-hidden cursor-grab active:cursor-grabbing canvas-grid">
+        
+        <!-- Transformation Container (Panned & Zoomed via JS Matrix) -->
+        <div id="canvas-world" class="absolute left-0 top-0 w-[8000px] h-[8000px] origin-top-left pointer-events-none">
+          
+          <!-- SVG Connections Layer -->
+          <svg id="svg-connections" class="absolute inset-0 w-full h-full pointer-events-auto">
+            <defs>
+              <!-- Arrow marker for regular links -->
+              <marker id="arrowhead" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+                <polygon points="0 0, 8 4, 0 8" fill="#475569" />
+              </marker>
+              <!-- Arrow marker for Yes/Positive branch -->
+              <marker id="arrowhead-yes" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+                <polygon points="0 0, 8 4, 0 8" fill="#0284c7" />
+              </marker>
+              <!-- Arrow marker for No/Escalate branch -->
+              <marker id="arrowhead-no" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+                <polygon points="0 0, 8 4, 0 8" fill="#e11d48" />
+              </marker>
+            </defs>
+            <g id="svg-paths-group"></g>
+          </svg>
+
+          <!-- Flowchart Nodes DOM Container -->
+          <div id="nodes-container" class="absolute inset-0 pointer-events-auto">
+            <!-- Dynamic interactive nodes go here -->
+          </div>
+
+        </div>
+
+        <!-- Canvas Status Indicator Bottom Left -->
+        <div class="absolute bottom-3 left-4 z-10 flex items-center space-x-2 text-[10px] text-slate-500 bg-white/80 backdrop-blur-sm px-2.5 py-1 rounded border border-slate-300">
+          <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+          <span id="canvas-status">Auto-saved to Browser</span>
+          <span class="text-slate-300">|</span>
+          <span id="node-count-label">0 nodes</span>
+        </div>
+
+      </div>
+
+    </main>
+
+    <!-- RIGHT INSPECTOR & SOP SCRIPT ASSISTANT (COLLAPSIBLE) -->
+    <aside id="right-inspector" class="w-80 bg-white border-l border-slate-200 flex flex-col z-20 shrink-0 text-xs shadow-sm transition-all duration-200">
+      
+      <!-- Panel Header -->
+      <div class="p-3 border-b border-slate-200 flex items-center justify-between bg-slate-50">
+        <div class="flex items-center space-x-1.5 font-bold text-slate-800">
+          <i data-lucide="sliders" class="w-4 h-4 text-blue-600"></i>
+          <span>Step Details & Scripts</span>
+        </div>
+        <button id="btn-close-inspector" class="text-slate-400 hover:text-slate-600">
+          <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
+      </div>
+
+      <!-- Panel Body -->
+      <div class="flex-1 overflow-y-auto p-4 space-y-4">
+        
+        <!-- Selection State Notice -->
+        <div id="inspector-no-selection" class="text-center py-8 text-slate-400">
+          <i data-lucide="mouse-pointer-click" class="w-8 h-8 mx-auto mb-2 text-slate-300"></i>
+          <p class="font-medium text-slate-500">No node selected</p>
+          <p class="text-[11px] text-slate-400 mt-1">Click any flowchart box to view instructions and approved scripts.</p>
+        </div>
+
+        <!-- Read-Only Information View (For Agents) -->
+        <div id="inspector-readonly-view" class="space-y-3 hidden">
+          <div class="p-3 rounded-lg bg-slate-50 border border-slate-200">
+            <div id="ro-node-type-badge" class="inline-block text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded bg-sky-100 text-sky-800 mb-1.5">Process</div>
+            <h3 id="ro-node-title" class="text-xs font-bold text-slate-900 leading-snug">Title</h3>
+            <p id="ro-node-desc" class="text-[11px] text-slate-600 mt-1.5 leading-relaxed">Description</p>
+          </div>
+          <div id="ro-node-branch-box" class="p-2 rounded bg-amber-50 border border-amber-200 text-amber-900 text-[11px] hidden">
+            <span class="font-bold">Condition:</span> <span id="ro-node-branch">Yes</span>
+          </div>
+        </div>
+
+        <!-- Node Editor Form (visible only in Manager Mode when selected) -->
+        <div id="inspector-editor" class="space-y-3.5 hidden">
+          <div>
+            <label class="block font-semibold text-slate-700 mb-1">Step Type</label>
+            <select id="inp-node-type" class="w-full border border-slate-300 rounded px-2.5 py-1.5 text-xs bg-white text-slate-800 focus:outline-none focus:ring-1 focus:ring-sky-500">
+              <option value="start">Start / Trigger (Capsule)</option>
+              <option value="process">Standard Process Step</option>
+              <option value="decision">Decision / Question (Diamond)</option>
+              <option value="alert">MOD / Critical Alert (High Priority)</option>
+              <option value="end">Resolution / Complete (Capsule)</option>
+            </select>
+          </div>
+
+          <div>
+            <label class="block font-semibold text-slate-700 mb-1">Step Title / Summary</label>
+            <input type="text" id="inp-node-title" class="w-full border border-slate-300 rounded px-2.5 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-sky-500 font-medium" placeholder="e.g. Call CG right away">
+          </div>
+
+          <div>
+            <label class="block font-semibold text-slate-700 mb-1">Detailed Instructions / Description</label>
+            <textarea id="inp-node-desc" rows="3" class="w-full border border-slate-300 rounded px-2.5 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-sky-500 resize-y" placeholder="Additional details, memo instructions, or system notes..."></textarea>
+          </div>
+
+          <div>
+            <label class="block font-semibold text-slate-700 mb-1">Branch / Connection Label (Optional)</label>
+            <input type="text" id="inp-node-branch" class="w-full border border-slate-300 rounded px-2.5 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-sky-500" placeholder="e.g. Yes, No, ETA < 15min">
+          </div>
+
+          <!-- Color Customizer -->
+          <div>
+            <label class="block font-semibold text-slate-700 mb-1">Visual Accent</label>
+            <div class="flex items-center space-x-2">
+              <button data-color="default" class="color-picker-dot w-6 h-6 rounded-full bg-slate-100 border border-slate-300" title="Default Clean"></button>
+              <button data-color="green" class="color-picker-dot w-6 h-6 rounded-full bg-emerald-50 border border-emerald-400" title="Green Trigger"></button>
+              <button data-color="blue" class="color-picker-dot w-6 h-6 rounded-full bg-sky-50 border border-sky-400" title="Sky Action"></button>
+              <button data-color="amber" class="color-picker-dot w-6 h-6 rounded-full bg-amber-50 border border-amber-400" title="Amber Decision"></button>
+              <button data-color="rose" class="color-picker-dot w-6 h-6 rounded-full bg-rose-50 border border-rose-400" title="Rose Alert"></button>
+            </div>
+          </div>
+
+          <div class="pt-2 border-t border-slate-200">
+            <button id="btn-delete-active-node" class="w-full bg-rose-50 text-rose-700 hover:bg-rose-100 border border-rose-200 rounded py-1.5 font-medium flex items-center justify-center gap-1.5 transition">
+              <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+              <span>Delete This Step</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Evergreen Approved SOP Snippets & Scripts Section -->
+        <div class="pt-3 border-t border-slate-200">
+          <div class="flex items-center justify-between mb-2">
+            <span class="font-bold text-slate-700 uppercase tracking-wider text-[10px]">Approved SOP Scripts</span>
+            <span class="text-[9px] bg-slate-100 text-slate-500 px-1 rounded">Click to Copy</span>
+          </div>
+
+          <div class="space-y-2">
+            <!-- Script Card 1 -->
+            <div class="p-2 border border-slate-200 rounded bg-slate-50 hover:bg-slate-100 transition group cursor-pointer relative" onclick="copySnippetText(this)">
+              <div class="font-semibold text-sky-800 text-[11px] mb-0.5 flex items-center justify-between">
+                <span>Missed Clock-In Caregiver SMS</span>
+                <i data-lucide="copy" class="w-3 h-3 text-slate-400 group-hover:text-sky-600"></i>
+              </div>
+              <p class="text-[10px] text-slate-600 leading-snug">"Good morning [Name]! I received an alert in Quo that you missed your clock-in at [Time] with [Client]. May I know if you are already with the client, please? - [Your Name]"</p>
+            </div>
+
+            <!-- Script Card 2 -->
+            <div class="p-2 border border-slate-200 rounded bg-slate-50 hover:bg-slate-100 transition group cursor-pointer relative" onclick="copySnippetText(this)">
+              <div class="font-semibold text-sky-800 text-[11px] mb-0.5 flex items-center justify-between">
+                <span>Caregiver Pushback Script</span>
+                <i data-lucide="copy" class="w-3 h-3 text-slate-400 group-hover:text-sky-600"></i>
+              </div>
+              <p class="text-[10px] text-slate-600 leading-snug">"While I understand you're feeling under the weather, we need you to still attend the visit as scheduled, provided you are not contagious. I will actively work to find a replacement for you as quickly as possible. Please keep me updated, but please proceed to the client's home unless I contact you with a confirmed replacement."</p>
+            </div>
+
+            <!-- Script Card 3 -->
+            <div class="p-2 border border-slate-200 rounded bg-slate-50 hover:bg-slate-100 transition group cursor-pointer relative" onclick="copySnippetText(this)">
+              <div class="font-semibold text-sky-800 text-[11px] mb-0.5 flex items-center justify-between">
+                <span>Out of Scope / After-Hours SMS</span>
+                <i data-lucide="copy" class="w-3 h-3 text-slate-400 group-hover:text-sky-600"></i>
+              </div>
+              <p class="text-[10px] text-slate-600 leading-snug">"Hi [Name]! Thanks for reaching out. You've reached the On-Call Support Center after-hours team. The appropriate team is currently out of the office, but I will forward your request so they can assist during office hours (8AM-5PM). - [Your Name]"</p>
+            </div>
+
+            <!-- Script Card 4 -->
+            <div class="p-2 border border-slate-200 rounded bg-slate-50 hover:bg-slate-100 transition group cursor-pointer relative" onclick="copySnippetText(this)">
+              <div class="font-semibold text-sky-800 text-[11px] mb-0.5 flex items-center justify-between">
+                <span>Client Update (Near Shift Time)</span>
+                <i data-lucide="copy" class="w-3 h-3 text-slate-400 group-hover:text-sky-600"></i>
+              </div>
+              <p class="text-[10px] text-slate-600 leading-snug">"Hi [Client], this is [Your Name] with Cornerstone Caregiving. I'm calling to provide an update on your scheduled visit at [Time]. We are still actively working on coverage and will notify you immediately once a caregiver is confirmed. Thank you for your patience."</p>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+    </aside>
+
+  </div>
+
+  <!-- POPUP QUICK SPAWN MODAL (Shown when user clicks the '+' button on a node) -->
+  <div id="quick-spawn-modal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-[2px] z-50 flex items-center justify-center hidden">
+    <div class="bg-white rounded-xl shadow-2xl border border-slate-200 w-96 p-4 animate-in fade-in zoom-in-95 duration-150">
+      <div class="flex items-center justify-between border-b border-slate-200 pb-2 mb-3">
+        <div class="flex items-center space-x-1.5 font-bold text-slate-800 text-xs">
+          <i data-lucide="git-branch" class="w-4 h-4 text-cyan-600"></i>
+          <span>Add Connected Step</span>
+        </div>
+        <button id="btn-close-spawn-modal" class="text-slate-400 hover:text-slate-600">
+          <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
+      </div>
+
+      <div class="space-y-3 text-xs">
+        <div>
+          <label class="block font-semibold text-slate-700 mb-1">Branch Type:</label>
+          <div class="grid grid-cols-3 gap-2">
+            <button data-type="process" class="spawn-type-opt px-2 py-2 rounded border border-sky-300 bg-sky-50 text-sky-900 text-center font-medium hover:bg-sky-100 transition flex flex-col items-center gap-1">
+              <i data-lucide="square" class="w-4 h-4 text-sky-600"></i>
+              <span>Process</span>
+            </button>
+            <button data-type="decision" class="spawn-type-opt px-2 py-2 rounded border border-amber-300 bg-amber-50 text-amber-900 text-center font-medium hover:bg-amber-100 transition flex flex-col items-center gap-1">
+              <i data-lucide="help-circle" class="w-4 h-4 text-amber-600"></i>
+              <span>Decision</span>
+            </button>
+            <button data-type="alert" class="spawn-type-opt px-2 py-2 rounded border border-rose-300 bg-rose-50 text-rose-900 text-center font-medium hover:bg-rose-100 transition flex flex-col items-center gap-1">
+              <i data-lucide="alert-triangle" class="w-4 h-4 text-rose-600"></i>
+              <span>Alert/MOD</span>
+            </button>
+          </div>
+        </div>
+
+        <div>
+          <label class="block font-semibold text-slate-700 mb-1">Step Text / Summary:</label>
+          <input type="text" id="spawn-input-text" class="w-full border border-slate-300 rounded px-2.5 py-1.5 text-xs focus:ring-1 focus:ring-sky-500 focus:outline-none" placeholder="e.g., Ask if CG is on the way">
+        </div>
+
+        <div>
+          <label class="block font-semibold text-slate-700 mb-1">Connecting Branch Label (Optional):</label>
+          <div class="flex gap-1.5 mb-1.5">
+            <button type="button" onclick="document.getElementById('spawn-input-branch').value='Yes'" class="px-2 py-0.5 rounded bg-slate-100 hover:bg-slate-200 border text-[11px] text-slate-600">Yes</button>
+            <button type="button" onclick="document.getElementById('spawn-input-branch').value='No'" class="px-2 py-0.5 rounded bg-slate-100 hover:bg-slate-200 border text-[11px] text-slate-600">No</button>
+            <button type="button" onclick="document.getElementById('spawn-input-branch').value='Present'" class="px-2 py-0.5 rounded bg-slate-100 hover:bg-slate-200 border text-[11px] text-slate-600">Present</button>
+            <button type="button" onclick="document.getElementById('spawn-input-branch').value='Unreachable'" class="px-2 py-0.5 rounded bg-slate-100 hover:bg-slate-200 border text-[11px] text-slate-600">Unreachable</button>
+          </div>
+          <input type="text" id="spawn-input-branch" class="w-full border border-slate-300 rounded px-2.5 py-1.5 text-xs focus:ring-1 focus:ring-sky-500 focus:outline-none" placeholder="e.g. Yes / No">
+        </div>
+
+        <div class="pt-2 flex justify-end gap-2">
+          <button id="btn-cancel-spawn" class="px-3 py-1.5 rounded border border-slate-300 text-slate-600 hover:bg-slate-100 font-medium">Cancel</button>
+          <button id="btn-confirm-spawn" class="px-3 py-1.5 rounded bg-sky-600 hover:bg-sky-500 text-white font-medium shadow-sm">Add Connected Step</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- FLOATING NOTIFICATION TOAST -->
+  <div id="toast" class="fixed bottom-5 right-5 z-50 bg-[#0b2847] text-white px-4 py-2.5 rounded-lg shadow-xl text-xs flex items-center space-x-2 border border-cyan-500/30 transform translate-y-20 opacity-0 transition-all duration-300 pointer-events-none">
+    <i data-lucide="check-circle" class="w-4 h-4 text-cyan-400"></i>
+    <span id="toast-message">Action successful</span>
+  </div>
+
+  <!-- JAVASCRIPT APPLICATION LOGIC -->
+  <script>
+    /* ==========================================================================
+       CORNERSTONE EVERGREEN EASY FLOWCHART BUILDER ENGINE
+       ========================================================================== */
+
+    // Application State
+    const AppState = {
+      isManagerMode: false,
+      managerPasscode: 'CS2020', // Configurable Manager PIN
+      headerData: {
+        title: 'OnCall SOP Flowchart',
+        version: 'V20 - Evergreen',
+        subtitle: 'Cornerstone Caregiving Support Center'
+      },
+      processes: {}, // { [tabId]: { id, name, nodes: [], connections: [] } }
+      activeTabId: null,
+      selectedNodeId: null,
+      multiSelectNodeIds: [],
+      clipboard: null,
+      history: [],
+      historyIndex: -1,
+      maxHistory: 30,
+      zoom: 1,
+      pan: { x: 300, y: 150 },
+      isDraggingCanvas: false,
+      dragStart: { x: 0, y: 0 },
+      dragNode: null,
+      nodeDragOffset: { x: 0, y: 0 },
+      spawnParentId: null,
+      spawnBranchDirection: 'down',
+      selectedSpawnType: 'process',
+    };
+
+    // DOM Elements
+    const DOM = {
+      canvasViewport: document.getElementById('canvas-viewport'),
+      canvasWorld: document.getElementById('canvas-world'),
+      nodesContainer: document.getElementById('nodes-container'),
+      svgPathsGroup: document.getElementById('svg-paths-group'),
+      tabsContainer: document.getElementById('tabs-container'),
+      zoomLabel: document.getElementById('zoom-label'),
+      nodeCountLabel: document.getElementById('node-count-label'),
+      canvasStatus: document.getElementById('canvas-status'),
+      toast: document.getElementById('toast'),
+      toastMessage: document.getElementById('toast-message'),
+      // Role Lock
+      roleBadge: document.getElementById('role-badge'),
+      roleText: document.getElementById('role-text'),
+      btnToggleRole: document.getElementById('btn-toggle-role'),
+      roleBtnLabel: document.getElementById('role-btn-label'),
+      roleBtnIcon: document.getElementById('role-btn-icon'),
+      // Editable Header Elements
+      headerMainTitle: document.getElementById('header-main-title'),
+      headerVersionBadge: document.getElementById('header-version-badge'),
+      headerSubTitle: document.getElementById('header-sub-title'),
+      // Inspector
+      rightInspector: document.getElementById('right-inspector'),
+      inspectorNoSelection: document.getElementById('inspector-no-selection'),
+      inspectorEditor: document.getElementById('inspector-editor'),
+      inspectorReadonlyView: document.getElementById('inspector-readonly-view'),
+      roNodeTypeBadge: document.getElementById('ro-node-type-badge'),
+      roNodeTitle: document.getElementById('ro-node-title'),
+      roNodeDesc: document.getElementById('ro-node-desc'),
+      roNodeBranchBox: document.getElementById('ro-node-branch-box'),
+      roNodeBranch: document.getElementById('ro-node-branch'),
+      inpNodeType: document.getElementById('inp-node-type'),
+      inpNodeTitle: document.getElementById('inp-node-title'),
+      inpNodeDesc: document.getElementById('inp-node-desc'),
+      inpNodeBranch: document.getElementById('inp-node-branch'),
+      // Spawn Modal
+      quickSpawnModal: document.getElementById('quick-spawn-modal'),
+      spawnInputText: document.getElementById('spawn-input-text'),
+      spawnInputBranch: document.getElementById('spawn-input-branch'),
+    };
+
+    /* ==========================================================================
+       DEFAULT PRE-LOADED EVERGREEN SOP WORKFLOW TEMPLATES
+       ========================================================================== */
+    const SOP_PRESETS = {
+      'missed-clockin': {
+        name: 'Missed Clock In',
+        nodes: [
+          { id: 'n1', type: 'start', title: 'Missed Clock in', desc: 'Alert received via Quo / AxisCare CICO monitoring', x: 420, y: 40, color: 'green' },
+          { id: 'n2', type: 'process', title: 'Check Profile Notes & Calendar', desc: 'Confirm no special note: "Family Caregiver" or "In-office handles"', x: 400, y: 140, color: 'default' },
+          { id: 'n3', type: 'process', title: 'Call CG right away to check status', desc: 'If no answer, immediately send standard Quo SMS', x: 400, y: 260, color: 'default' },
+          { id: 'n4', type: 'decision', title: 'Confirm if CG is with the CL?', desc: 'Is the caregiver already at the client residence?', x: 410, y: 380, color: 'amber' },
+          
+          // YES branch: Caregiver is present
+          { id: 'n5', type: 'process', title: 'Ask to speak with CL/RP to confirm arrival', desc: 'Verify actual arrival time with client directly', x: 200, y: 520, color: 'blue' },
+          { id: 'n6', type: 'decision', title: 'CL/RP available?', desc: 'Can client or responsible party confirm arrival?', x: 215, y: 640, color: 'amber' },
+          { id: 'n7', type: 'process', title: 'Confirm CG arrival time with CL', desc: '"Hi Mr. Smith, did Ari arrive on time today?"', x: 80, y: 770, color: 'default' },
+          { id: 'n8', type: 'process', title: 'Ask CG for photo of front door / mailbox / GPS', desc: 'Never take client photo! Identifiable exterior proof only', x: 320, y: 770, color: 'default' },
+          { id: 'n9', type: 'end', title: 'Adjust AxisCare Time & Add Detailed Memo', desc: 'Ensure accurate records; do not unverify verified shifts', x: 200, y: 920, color: 'green' },
+          
+          // NO branch: Caregiver is NOT present yet
+          { id: 'n10', type: 'process', title: 'Ask if CG is on the way', desc: 'Determine current location and reason for delay', x: 640, y: 520, color: 'default' },
+          { id: 'n11', type: 'decision', title: 'Is CG en route?', desc: 'Will caregiver arrive shortly or is this a no-show?', x: 650, y: 640, color: 'amber' },
+          { id: 'n12', type: 'process', title: 'Check ETA & Notify CL/RP', desc: 'Send courtesy SMS/Call: "Caregiver is en route, ETA 15m"', x: 520, y: 770, color: 'blue' },
+          { id: 'n13', type: 'alert', title: 'Initiate Replacement Search & Alert MOD', desc: 'Caregiver unable to make shift. Follow Call-Out Protocol!', x: 780, y: 770, color: 'rose' },
+          { id: 'n14', type: 'end', title: 'Monitor arrival in 5m & log in AxisCare', desc: 'Verify clock-in occurs. If not, follow up immediately.', x: 520, y: 920, color: 'green' },
+        ],
+        connections: [
+          { from: 'n1', to: 'n2', label: '' },
+          { from: 'n2', to: 'n3', label: '' },
+          { from: 'n3', to: 'n4', label: '' },
+          { from: 'n4', to: 'n5', label: 'Yes' },
+          { from: 'n4', to: 'n10', label: 'No' },
+          { from: 'n5', to: 'n6', label: '' },
+          { from: 'n6', to: 'n7', label: 'Yes' },
+          { from: 'n6', to: 'n8', label: 'No' },
+          { from: 'n7', to: 'n9', label: 'Confirmed' },
+          { from: 'n8', to: 'n9', label: 'Proof verified' },
+          { from: 'n10', to: 'n11', label: '' },
+          { from: 'n11', to: 'n12', label: 'Yes (En route)' },
+          { from: 'n11', to: 'n13', label: 'No (No Show)' },
+          { from: 'n12', to: 'n14', label: 'Follow-up' }
+        ]
+      },
+
+      'caregiver-callout': {
+        name: 'Caregiver Call-Out',
+        nodes: [
+          { id: 'co1', type: 'start', title: 'Caregiver Calls to Report Absence', desc: 'Must be via phone call! SMS alone is NOT accepted per policy.', x: 420, y: 40, color: 'green' },
+          { id: 'co2', type: 'decision', title: 'Did Caregiver call or text?', desc: 'Cornerstone policy strictly requires direct phone communication', x: 430, y: 150, color: 'amber' },
+          { id: 'co3', type: 'process', title: 'Send SMS template & Call immediately', desc: '"We are unable to process call-offs via SMS alone. Please call us..."', x: 180, y: 270, color: 'default' },
+          { id: 'co4', type: 'process', title: 'Calmly probe reason & explore alternatives', desc: 'Attempt respectful pushback: delayed start, partial shift, ride?', x: 420, y: 270, color: 'default' },
+          { id: 'co5', type: 'decision', title: 'Can Caregiver work part or delayed?', desc: 'Can gaps in care be prevented for the client?', x: 430, y: 390, color: 'amber' },
+          { id: 'co6', type: 'process', title: 'Adjust shift start time & memo in AxisCare', desc: 'Notify Client/RP of modified arrival schedule', x: 200, y: 510, color: 'blue' },
+          { id: 'co7', type: 'alert', title: 'Immediately Unassign CG in AxisCare', desc: 'Add memo: "Called out - sick, doctor\'s note requested"', x: 550, y: 510, color: 'rose' },
+          { id: 'co8', type: 'process', title: 'Send Courtesy Message to MOD', desc: '"CG [Name] called out for Mrs. [Client] at [Time]. Actively sourcing."', x: 550, y: 630, color: 'default' },
+          { id: 'co9', type: 'process', title: '1. Contact Previous Caregivers from Calendar', desc: 'Prioritize CGs who have worked with this client previously', x: 550, y: 740, color: 'blue' },
+          { id: 'co10', type: 'process', title: '2. Quo & AxisCare Recommended List Blast', desc: 'Apply filters: distance, schedule conflict, active status', x: 550, y: 850, color: 'default' },
+          { id: 'co11', type: 'end', title: 'Notify Client/RP & Document Call Log', desc: 'Confirm new caregiver, tag MOD, and mark follow-up', x: 550, y: 970, color: 'green' },
+        ],
+        connections: [
+          { from: 'co1', to: 'co2', label: '' },
+          { from: 'co2', to: 'co3', label: 'Sent SMS' },
+          { from: 'co2', to: 'co4', label: 'Phone Call' },
+          { from: 'co3', to: 'co4', label: 'Call Connected' },
+          { from: 'co4', to: 'co5', label: '' },
+          { from: 'co5', to: 'co6', label: 'Yes' },
+          { from: 'co5', to: 'co7', label: 'No (Firm Call-out)' },
+          { from: 'co7', to: 'co8', label: '' },
+          { from: 'co8', to: 'co9', label: '' },
+          { from: 'co9', to: 'co10', label: 'If unfilled' },
+          { from: 'co10', to: 'co11', label: 'Replacement found' }
+        ]
+      },
+
+      'visit-cancellation': {
+        name: 'Visit Cancellation',
+        nodes: [
+          { id: 'vc1', type: 'start', title: 'Cancellation Request Received', desc: 'Client or Responsible Party calls to cancel upcoming visit', x: 420, y: 40, color: 'green' },
+          { id: 'vc2', type: 'decision', title: 'Is caller authorized?', desc: 'If client has dementia/Alzheimer\'s, RP approval is MANDATORY', x: 280, y: 150, color: 'amber' },
+          { id: 'vc3', type: 'alert', title: 'Hold & Contact Responsible Party (RP)', desc: 'Unauthorized cancellation. Verify with family member or POA', x: 60, y: 300, color: 'rose' },
+          { id: 'vc4', type: 'decision', title: 'Cancellation Timeframe?', desc: 'Is notice less than 24 hours or greater than 24 hours?', x: 500, y: 150, color: 'amber' },
+          
+          // Less than 24 hours
+          { id: 'vc5', type: 'process', title: 'Less Than 24h: DO NOT Unassign CG', desc: 'Flip status to "Visit Cancellation" in AxisCare. Keep shift on calendar.', x: 340, y: 320, color: 'blue' },
+          { id: 'vc6', type: 'process', title: 'Call & Text Caregiver immediately', desc: 'Notify CG of cancellation so they do not travel to the home', x: 340, y: 460, color: 'default' },
+          
+          // More than 24 hours
+          { id: 'vc7', type: 'process', title: 'More Than 24h: Unassign CG & Remove', desc: 'Flip status, zero financial if needed, remove shift from schedule', x: 620, y: 320, color: 'blue' },
+          { id: 'vc8', type: 'process', title: 'Notify CG & Send Courtesy Update to MOD', desc: 'Document reason in memo; mark Call Log for follow up', x: 620, y: 460, color: 'default' },
+
+          { id: 'vc9', type: 'end', title: 'Complete AxisCare Call Log & Tag MOD', desc: 'Document who requested cancellation, exact time, and reason', x: 480, y: 600, color: 'green' },
+        ],
+        connections: [
+          { from: 'vc1', to: 'vc2', label: '' },
+          { from: 'vc2', to: 'vc3', label: 'Dementia / Unauthorized' },
+          { from: 'vc2', to: 'vc4', label: 'Authorized' },
+          { from: 'vc3', to: 'vc4', label: 'RP Confirmed' },
+          { from: 'vc4', to: 'vc5', label: '< 24 Hours' },
+          { from: 'vc4', to: 'vc7', label: '> 24 Hours' },
+          { from: 'vc5', to: 'vc6', label: '' },
+          { from: 'vc7', to: 'vc8', label: '' },
+          { from: 'vc6', to: 'vc9', label: '' },
+          { from: 'vc8', to: 'vc9', label: '' }
+        ]
+      },
+
+      'emergency-fall': {
+        name: 'Emergency / Fall Protocol',
+        nodes: [
+          { id: 'em1', type: 'start', title: 'Emergency / Fall Alert Reported', desc: 'Caregiver or family reports acute crisis or patient fall', x: 420, y: 40, color: 'rose' },
+          { id: 'em2', type: 'decision', title: 'Is Client on Hospice?', desc: 'Check Client 101 Form immediately!', x: 430, y: 150, color: 'amber' },
+          { id: 'em3', type: 'alert', title: 'DO NOT CALL 911 - Contact Hospice Directly', desc: 'Hospice instructions govern end-of-life palliative emergency plan', x: 180, y: 270, color: 'rose' },
+          { id: 'em4', type: 'alert', title: 'Instruct CG to Call 911 If Life-Threatening', desc: 'Severe injury, non-responsive, head trauma, severe pain', x: 600, y: 270, color: 'rose' },
+          { id: 'em5', type: 'process', title: 'Gather Critical Fall Incident Details', desc: 'Time, location in house, what happened before/during/after, injuries', x: 400, y: 400, color: 'blue' },
+          { id: 'em6', type: 'alert', title: 'CALL MOD Immediately (Do Not Text)', desc: 'Direct phone contact required for emergencies and fall incidents', x: 400, y: 520, color: 'rose' },
+          { id: 'em7', type: 'process', title: 'Contact Responsible Party (RP)', desc: 'Especially if client lives alone or emergency services dispatched', x: 400, y: 640, color: 'default' },
+          { id: 'em8', type: 'end', title: 'Create AxisCare Call Log & Mark Follow-Up', desc: 'Detailed documentation: tag MOD, RP, Client, and Staff', x: 400, y: 760, color: 'green' }
+        ],
+        connections: [
+          { from: 'em1', to: 'em2', label: '' },
+          { from: 'em2', to: 'em3', label: 'Yes (On Hospice)' },
+          { from: 'em2', to: 'em4', label: 'No (General Client)' },
+          { from: 'em3', to: 'em5', label: '' },
+          { from: 'em4', to: 'em5', label: '' },
+          { from: 'em5', to: 'em6', label: '' },
+          { from: 'em6', to: 'em7', label: '' },
+          { from: 'em7', to: 'em8', label: '' }
+        ]
+      },
+
+      'va-essentials': {
+        name: 'VA Essentials Protocol',
+        nodes: [
+          { id: 'va1', type: 'start', title: 'VA Client Schedule Inquiry / Request', desc: 'Veterans Affairs client requests visit change or addition', x: 420, y: 40, color: 'green' },
+          { id: 'va2', type: 'decision', title: 'Client Hospitalized?', desc: 'VA clients in hospital have special compliance rules', x: 430, y: 150, color: 'amber' },
+          { id: 'va3', type: 'alert', title: 'VA Hours CANNOT Be Used in Hospital', desc: 'Explain politely: VA policy strictly prohibits hospital sitting. Notify MOD.', x: 180, y: 270, color: 'rose' },
+          { id: 'va4', type: 'decision', title: 'Within Same Billing Week (Sun-Sat)?', desc: 'VA billing cycles strictly run Sunday to Saturday', x: 550, y: 270, color: 'amber' },
+          { id: 'va5', type: 'process', title: 'Visits CANNOT Move Across Weeks', desc: 'If moved to next week, visit will NOT be paid by the VA!', x: 400, y: 400, color: 'rose' },
+          { id: 'va6', type: 'process', title: 'Verify Authorized Weekly Hours Cap', desc: 'Check max hours in AxisCare. Never transport VA clients in CG vehicle.', x: 680, y: 400, color: 'blue' },
+          { id: 'va7', type: 'end', title: 'Update Schedule & AxisCare Memo', desc: 'Ensure VA compliance notes logged. Tag MOD.', x: 550, y: 530, color: 'green' }
+        ],
+        connections: [
+          { from: 'va1', to: 'va2', label: '' },
+          { from: 'va2', to: 'va3', label: 'Yes (Hospitalized)' },
+          { from: 'va2', to: 'va4', label: 'No (Standard visit)' },
+          { from: 'va4', to: 'va5', label: 'Different Week' },
+          { from: 'va4', to: 'va6', label: 'Same Week (Sun-Sat)' },
+          { from: 'va5', to: 'va7', label: '' },
+          { from: 'va6', to: 'va7', label: 'Approved' }
+        ]
+      }
+    };
+
+    /* ==========================================================================
+       INITIALIZATION & STORAGE ENGINE
+       ========================================================================== */
+    function initApp() {
+      // Load saved state from LocalStorage or seed with Evergreen Presets
+      const savedData = localStorage.getItem('cornerstone_sop_flows_v20');
+      if (savedData) {
+        try {
+          const parsed = JSON.parse(savedData);
+          AppState.processes = parsed.processes || {};
+          AppState.activeTabId = parsed.activeTabId || Object.keys(AppState.processes)[0];
+          if (parsed.headerData) {
+            AppState.headerData = { ...AppState.headerData, ...parsed.headerData };
+          }
+        } catch (e) {
+          console.error('Error loading saved SOP data', e);
+          seedInitialData();
+        }
+      } else {
+        seedInitialData();
+      }
+
+      if (!AppState.processes[AppState.activeTabId]) {
+        AppState.activeTabId = Object.keys(AppState.processes)[0];
+      }
+
+      // Initialize UI & Header Text
+      applyHeaderDataToUI();
+      renderProcessTabs();
+      applyCanvasTransform();
+      renderCurrentFlow();
+      setupEventListeners();
+      pushHistory();
+
+      // Initialize Lucide icons
+      lucide.createIcons();
+      showToast('Loaded Evergreen SOP Workflows');
+    }
+
+    function applyHeaderDataToUI() {
+      if (DOM.headerMainTitle) DOM.headerMainTitle.textContent = AppState.headerData.title;
+      if (DOM.headerVersionBadge) DOM.headerVersionBadge.textContent = AppState.headerData.version;
+      if (DOM.headerSubTitle) DOM.headerSubTitle.textContent = AppState.headerData.subtitle;
+      document.title = `${AppState.headerData.title} - ${AppState.headerData.version}`;
+    }
+
+    function seedInitialData() {
+      AppState.processes = {};
+      Object.keys(SOP_PRESETS).forEach(key => {
+        const p = SOP_PRESETS[key];
+        AppState.processes[key] = {
+          id: key,
+          name: p.name,
+          nodes: JSON.parse(JSON.stringify(p.nodes)),
+          connections: JSON.parse(JSON.stringify(p.connections))
+        };
+      });
+      AppState.activeTabId = 'missed-clockin';
+      saveToStorage();
+    }
+
+    function saveToStorage() {
+      try {
+        const payload = {
+          headerData: AppState.headerData,
+          processes: AppState.processes,
+          activeTabId: AppState.activeTabId
+        };
+        localStorage.setItem('cornerstone_sop_flows_v20', JSON.stringify(payload));
+        DOM.canvasStatus.textContent = 'Saved at ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      } catch (err) {
+        console.error('Save failed:', err);
+      }
+    }
+
+    /* ==========================================================================
+       TABS MANAGEMENT
+       ========================================================================== */
+    function renderProcessTabs() {
+      DOM.tabsContainer.innerHTML = '';
+      const tabIds = Object.keys(AppState.processes);
+
+      tabIds.forEach(id => {
+        const proc = AppState.processes[id];
+        const isActive = id === AppState.activeTabId;
+
+        const tabEl = document.createElement('div');
+        tabEl.className = `flex items-center justify-between px-2.5 py-1.5 rounded text-xs cursor-pointer border transition ${
+          isActive 
+            ? 'bg-sky-600 text-white font-semibold border-sky-700 shadow-sm' 
+            : 'bg-white text-slate-700 hover:bg-slate-50 border-slate-200'
+        }`;
+
+        tabEl.innerHTML = `
+          <div class="flex items-center space-x-1.5 truncate flex-1 mr-2" title="${proc.name}">
+            <span class="w-2 h-2 rounded-full ${isActive ? 'bg-cyan-300' : 'bg-slate-400'}"></span>
+            <span class="truncate tab-title">${proc.name}</span>
+          </div>
+          <div class="flex items-center space-x-1 opacity-70 hover:opacity-100 shrink-0 manager-only">
+            <button class="btn-rename-tab p-0.5 hover:text-cyan-200" title="Rename Flow">
+              <i data-lucide="edit-2" class="w-3 h-3"></i>
+            </button>
+            <button class="btn-dup-tab p-0.5 hover:text-cyan-200" title="Duplicate Flow">
+              <i data-lucide="copy" class="w-3 h-3"></i>
+            </button>
+            ${tabIds.length > 1 ? `
+            <button class="btn-del-tab p-0.5 hover:text-rose-300" title="Delete Flow">
+              <i data-lucide="trash" class="w-3 h-3"></i>
+            </button>` : ''}
+          </div>
+        `;
+
+        // Tab selection
+        tabEl.addEventListener('click', (e) => {
+          if (e.target.closest('button')) return;
+          switchTab(id);
+        });
+
+        // Rename
+        tabEl.querySelector('.btn-rename-tab')?.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const newName = prompt('Enter flow name:', proc.name);
+          if (newName && newName.trim()) {
+            proc.name = newName.trim();
+            saveToStorage();
+            renderProcessTabs();
+          }
+        });
+
+        // Duplicate
+        tabEl.querySelector('.btn-dup-tab')?.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const newId = 'flow_' + Date.now();
+          AppState.processes[newId] = {
+            id: newId,
+            name: proc.name + ' (Copy)',
+            nodes: JSON.parse(JSON.stringify(proc.nodes)),
+            connections: JSON.parse(JSON.stringify(proc.connections))
+          };
+          AppState.activeTabId = newId;
+          saveToStorage();
+          renderProcessTabs();
+          renderCurrentFlow();
+          showToast('Duplicated ' + proc.name);
+        });
+
+        // Delete
+        const delBtn = tabEl.querySelector('.btn-del-tab');
+        if (delBtn) {
+          delBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (confirm(`Delete flow "${proc.name}"?`)) {
+              delete AppState.processes[id];
+              AppState.activeTabId = Object.keys(AppState.processes)[0];
+              saveToStorage();
+              renderProcessTabs();
+              renderCurrentFlow();
+              showToast('Flow deleted');
+            }
+          });
+        }
+
+        DOM.tabsContainer.appendChild(tabEl);
+      });
+
+      lucide.createIcons();
+    }
+
+    function switchTab(id) {
+      if (AppState.activeTabId === id) return;
+      AppState.activeTabId = id;
+      AppState.selectedNodeId = null;
+      AppState.multiSelectNodeIds = [];
+      updateInspector();
+      renderProcessTabs();
+      renderCurrentFlow();
+      centerOnFlow();
+    }
+
+    /* ==========================================================================
+       CANVAS TRANSFORMATION & PAN/ZOOM
+       ========================================================================== */
+    function applyCanvasTransform() {
+      DOM.canvasWorld.style.transform = `translate(${AppState.pan.x}px, ${AppState.pan.y}px) scale(${AppState.zoom})`;
+      DOM.zoomLabel.textContent = `${Math.round(AppState.zoom * 100)}%`;
+    }
+
+    function zoomAt(factor, clientX, clientY) {
+      const rect = DOM.canvasViewport.getBoundingClientRect();
+      const originX = clientX !== undefined ? clientX - rect.left : rect.width / 2;
+      const originY = clientY !== undefined ? clientY - rect.top : rect.height / 2;
+
+      const newZoom = Math.min(Math.max(AppState.zoom * factor, 0.25), 2.5);
+      if (newZoom === AppState.zoom) return;
+
+      const ratio = newZoom / AppState.zoom;
+      AppState.pan.x = originX - (originX - AppState.pan.x) * ratio;
+      AppState.pan.y = originY - (originY - AppState.pan.y) * ratio;
+      AppState.zoom = newZoom;
+
+      applyCanvasTransform();
+    }
+
+    function centerOnFlow() {
+      const proc = getCurrentProcess();
+      if (!proc || !proc.nodes.length) {
+        AppState.pan = { x: 200, y: 100 };
+        AppState.zoom = 1;
+        applyCanvasTransform();
+        return;
+      }
+
+      // Compute actual bounding box of all nodes
+      let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+      proc.nodes.forEach(n => {
+        let nodeW = 230, nodeH = 90;
+        if (n.type === 'start' || n.type === 'end') { nodeW = 180; nodeH = 50; }
+        else if (n.type === 'decision') { nodeW = 176; nodeH = 110; }
+        else if (n.type === 'alert') { nodeW = 210; nodeH = 100; }
+
+        minX = Math.min(minX, n.x);
+        minY = Math.min(minY, n.y);
+        maxX = Math.max(maxX, n.x + nodeW);
+        maxY = Math.max(maxY, n.y + nodeH);
+      });
+
+      const rect = DOM.canvasViewport.getBoundingClientRect();
+      const contentW = maxX - minX;
+      const contentH = maxY - minY;
+
+      // Calculate comfortable zoom so entire diagram fits with padding
+      const padding = 70;
+      const availableW = Math.max(rect.width - padding * 2, 200);
+      const availableH = Math.max(rect.height - padding * 2, 200);
+
+      const targetZoom = Math.min(
+        Math.max(Math.min(availableW / contentW, availableH / contentH), 0.55),
+        1.0
+      );
+
+      AppState.zoom = targetZoom;
+
+      // Perfectly center content in the visible viewport
+      const flowCenterWorldX = minX + contentW / 2;
+      const flowCenterWorldY = minY + contentH / 2;
+
+      AppState.pan.x = (rect.width / 2) - (flowCenterWorldX * targetZoom);
+      AppState.pan.y = (rect.height / 2) - (flowCenterWorldY * targetZoom);
+
+      applyCanvasTransform();
+    }
+
+    /* ==========================================================================
+       RENDERING: NODES & CONNECTIONS
+       ========================================================================== */
+    function getCurrentProcess() {
+      return AppState.processes[AppState.activeTabId];
+    }
+
+    function renderCurrentFlow() {
+      const proc = getCurrentProcess();
+      if (!proc) return;
+
+      DOM.nodesContainer.innerHTML = '';
+      DOM.nodeCountLabel.textContent = `${proc.nodes.length} nodes`;
+
+      // Render Each Node
+      proc.nodes.forEach(node => {
+        const nodeEl = createNodeElement(node);
+        DOM.nodesContainer.appendChild(nodeEl);
+      });
+
+      // Render Connections
+      renderConnections();
+      lucide.createIcons();
+    }
+
+    function createNodeElement(node) {
+      const isSelected = AppState.selectedNodeId === node.id || AppState.multiSelectNodeIds.includes(node.id);
+      const el = document.createElement('div');
+      el.id = `node-${node.id}`;
+      el.className = `node-element absolute select-none transition-shadow duration-150 ${AppState.isManagerMode ? 'cursor-move' : 'cursor-pointer'} ${isSelected ? 'z-20 ring-2 ring-sky-500 shadow-xl' : 'z-10 shadow-sm'}`;
+      el.style.left = `${node.x}px`;
+      el.style.top = `${node.y}px`;
+
+      // Determine styling according to node type
+      if (node.type === 'start' || node.type === 'end') {
+        // Pill / Capsule shape
+        el.className += ` rounded-full px-6 py-2.5 flex items-center justify-center font-bold text-xs border ${
+          node.color === 'rose'
+            ? 'bg-rose-50 text-rose-800 border-rose-400'
+            : 'bg-emerald-50 text-emerald-800 border-emerald-500'
+        }`;
+        el.style.minWidth = '170px';
+        el.innerHTML = `
+          <div class="text-center leading-tight">
+            <span>${escapeHtml(node.title)}</span>
+            ${node.desc ? `<div class="text-[9px] font-normal opacity-80 mt-0.5">${escapeHtml(node.desc)}</div>` : ''}
+          </div>
+          <!-- Bottom quick branch '+' -->
+          <button data-spawn="${node.id}" title="Branch Next Step" class="quick-spawn-btn absolute -bottom-3 left-1/2 transform -translate-x-1/2 w-6 h-6 rounded-full bg-sky-600 hover:bg-sky-500 text-white flex items-center justify-center shadow-md border-2 border-white transition hover:scale-110">
+            <i data-lucide="plus" class="w-3.5 h-3.5 pointer-events-none"></i>
+          </button>
+        `;
+      } else if (node.type === 'decision') {
+        // Symmetrical SVG Diamond Shape with horizontal unrotated text
+        el.className += ` w-44 h-28 flex items-center justify-center`;
+        el.innerHTML = `
+          <svg class="absolute inset-0 w-full h-full filter drop-shadow-sm pointer-events-none" viewBox="0 0 180 110">
+            <polygon points="90,4 176,55 90,106 4,55" fill="#fffbeb" stroke="#d97706" stroke-width="2" stroke-linejoin="round"/>
+          </svg>
+          <div class="relative z-10 text-center px-4 py-2 text-[11px] font-bold text-amber-950 pointer-events-none max-w-[130px] leading-tight select-none">
+            ${escapeHtml(node.title)}
+          </div>
+          <!-- Bottom Spawn Button -->
+          <button data-spawn="${node.id}" data-dir="bottom" title="Branch Next Step" class="quick-spawn-btn absolute -bottom-2.5 left-1/2 transform -translate-x-1/2 w-6 h-6 rounded-full bg-amber-600 hover:bg-amber-500 text-white flex items-center justify-center shadow-md border-2 border-white transition hover:scale-110 z-20">
+            <i data-lucide="plus" class="w-3.5 h-3.5 pointer-events-none"></i>
+          </button>
+        `;
+      } else if (node.type === 'alert') {
+        // Escalation / MOD Alert Card
+        el.className += ` rounded-lg p-3 bg-rose-50 border-2 border-rose-500 text-rose-950 w-52`;
+        el.innerHTML = `
+          <div class="flex items-center space-x-1.5 text-rose-700 font-bold text-[10px] uppercase tracking-wider mb-1">
+            <i data-lucide="alert-octagon" class="w-3.5 h-3.5"></i>
+            <span>MOD Escalation</span>
+          </div>
+          <div class="font-semibold text-xs text-rose-900 leading-tight">${escapeHtml(node.title)}</div>
+          ${node.desc ? `<div class="text-[10px] text-rose-800/80 mt-1 leading-snug">${escapeHtml(node.desc)}</div>` : ''}
+          <button data-spawn="${node.id}" title="Branch Next Step" class="quick-spawn-btn absolute -bottom-3 left-1/2 transform -translate-x-1/2 w-6 h-6 rounded-full bg-rose-600 hover:bg-rose-500 text-white flex items-center justify-center shadow-md border-2 border-white transition hover:scale-110">
+            <i data-lucide="plus" class="w-3.5 h-3.5 pointer-events-none"></i>
+          </button>
+        `;
+      } else {
+        // Standard Process Step Card
+        const colorStyles = {
+          default: 'bg-white border-slate-300 text-slate-800',
+          blue: 'bg-sky-50/80 border-sky-400 text-sky-950',
+          green: 'bg-emerald-50/80 border-emerald-400 text-emerald-950',
+          amber: 'bg-amber-50/80 border-amber-400 text-amber-950',
+          rose: 'bg-rose-50/80 border-rose-400 text-rose-950'
+        };
+        const activeColor = colorStyles[node.color || 'default'];
+
+        el.className += ` rounded-lg p-3 ${activeColor} border shadow-sm w-56 text-left hover:border-slate-400`;
+        el.innerHTML = `
+          <div class="font-semibold text-xs leading-snug text-slate-900">${escapeHtml(node.title)}</div>
+          ${node.desc ? `<div class="text-[10px] text-slate-600 mt-1 leading-snug border-t border-slate-200/60 pt-1">${escapeHtml(node.desc)}</div>` : ''}
+          <!-- Quick spawn bottom '+' -->
+          <button data-spawn="${node.id}" title="Add Next Step" class="quick-spawn-btn absolute -bottom-3 left-1/2 transform -translate-x-1/2 w-6 h-6 rounded-full bg-[#0b2847] hover:bg-sky-600 text-white flex items-center justify-center shadow-md border-2 border-white transition hover:scale-110">
+            <i data-lucide="plus" class="w-3.5 h-3.5 pointer-events-none"></i>
+          </button>
+        `;
+      }
+
+      // Drag and selection event handlers
+      el.addEventListener('mousedown', (e) => onNodeMouseDown(e, node.id));
+      el.addEventListener('dblclick', (e) => onNodeDoubleClick(e, node.id));
+
+      return el;
+    }
+
+    function renderConnections() {
+      const proc = getCurrentProcess();
+      if (!proc) return;
+
+      DOM.svgPathsGroup.innerHTML = '';
+
+      proc.connections.forEach(conn => {
+        const fromNode = proc.nodes.find(n => n.id === conn.from);
+        const toNode = proc.nodes.find(n => n.id === conn.to);
+        if (!fromNode || !toNode) return;
+
+        const pts = calculateConnectionPoints(fromNode, toNode);
+        const pathData = generateOrthogonalPath(pts.start, pts.end);
+
+        // Path Element
+        const pathEl = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        pathEl.setAttribute('d', pathData);
+        pathEl.setAttribute('fill', 'none');
+
+        // Color based on label
+        let strokeColor = '#475569';
+        let markerId = 'arrowhead';
+        if (conn.label && (conn.label.toLowerCase().includes('yes') || conn.label.toLowerCase().includes('confirm'))) {
+          strokeColor = '#0284c7';
+          markerId = 'arrowhead-yes';
+        } else if (conn.label && (conn.label.toLowerCase().includes('no') || conn.label.toLowerCase().includes('alert') || conn.label.toLowerCase().includes('unreach'))) {
+          strokeColor = '#e11d48';
+          markerId = 'arrowhead-no';
+        }
+
+        pathEl.setAttribute('stroke', strokeColor);
+        pathEl.setAttribute('stroke-width', '2');
+        pathEl.setAttribute('marker-end', `url(#${markerId})`);
+        pathEl.setAttribute('stroke-linecap', 'round');
+        DOM.svgPathsGroup.appendChild(pathEl);
+
+        // Branch Label text tag
+        if (conn.label) {
+          const midX = (pts.start.x + pts.end.x) / 2;
+          const midY = (pts.start.y + pts.end.y) / 2;
+
+          // Background pill
+          const textBg = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+          textBg.setAttribute('x', midX - 22);
+          textBg.setAttribute('y', midY - 9);
+          textBg.setAttribute('width', '44');
+          textBg.setAttribute('height', '18');
+          textBg.setAttribute('rx', '4');
+          textBg.setAttribute('fill', '#ffffff');
+          textBg.setAttribute('stroke', strokeColor);
+          textBg.setAttribute('stroke-width', '1');
+          DOM.svgPathsGroup.appendChild(textBg);
+
+          const textEl = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+          textEl.setAttribute('x', midX);
+          textEl.setAttribute('y', midY + 3.5);
+          textEl.setAttribute('text-anchor', 'middle');
+          textEl.setAttribute('fill', strokeColor);
+          textEl.setAttribute('font-size', '10px');
+          textEl.setAttribute('font-weight', 'bold');
+          textEl.textContent = conn.label;
+          DOM.svgPathsGroup.appendChild(textEl);
+        }
+      });
+    }
+
+    function calculateConnectionPoints(fromNode, toNode) {
+      // Dimensions approximation
+      const getBounds = (n) => {
+        let w = 224, h = 80;
+        if (n.type === 'start' || n.type === 'end') { w = 170; h = 42; }
+        if (n.type === 'decision') { w = 176; h = 110; }
+        if (n.type === 'alert') { w = 208; h = 90; }
+        return {
+          cx: n.x + w / 2,
+          cy: n.y + h / 2,
+          top: { x: n.x + w / 2, y: n.y },
+          bottom: { x: n.x + w / 2, y: n.y + h },
+          left: { x: n.x, y: n.y + h / 2 },
+          right: { x: n.x + w, y: n.y + h / 2 },
+        };
+      };
+
+      const fromB = getBounds(fromNode);
+      const toB = getBounds(toNode);
+
+      // Determine best anchor
+      let start = fromB.bottom;
+      let end = toB.top;
+
+      if (toNode.y < fromNode.y - 20) {
+        start = fromB.top;
+        end = toB.bottom;
+      } else if (Math.abs(toNode.y - fromNode.y) < 50) {
+        if (toNode.x > fromNode.x) {
+          start = fromB.right;
+          end = toB.left;
+        } else {
+          start = fromB.left;
+          end = toB.right;
+        }
+      }
+
+      return { start, end };
+    }
+
+    function generateOrthogonalPath(start, end) {
+      const midY = (start.y + end.y) / 2;
+      return `M ${start.x} ${start.y} L ${start.x} ${midY} L ${end.x} ${midY} L ${end.x} ${end.y}`;
+    }
+
+    /* ==========================================================================
+       INTERACTION: DRAG, SELECT, CONNECT, SPAWN
+       ========================================================================== */
+    function setupEventListeners() {
+      // Role lock / Manager Mode toggle
+      DOM.btnToggleRole.addEventListener('click', toggleManagerRole);
+
+      // Editable Header listeners
+      [DOM.headerMainTitle, DOM.headerVersionBadge, DOM.headerSubTitle].forEach(el => {
+        if (!el) return;
+        el.addEventListener('blur', () => {
+          AppState.headerData.title = DOM.headerMainTitle.textContent.trim() || 'OnCall SOP Flowchart';
+          AppState.headerData.version = DOM.headerVersionBadge.textContent.trim() || 'V20 - Evergreen';
+          AppState.headerData.subtitle = DOM.headerSubTitle.textContent.trim() || 'Cornerstone Caregiving Support Center';
+          document.title = `${AppState.headerData.title} - ${AppState.headerData.version}`;
+          saveToStorage();
+          showToast('Header details updated!');
+        });
+
+        el.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            el.blur();
+          }
+        });
+      });
+
+      // Canvas viewport drag for panning
+      DOM.canvasViewport.addEventListener('mousedown', (e) => {
+        // If clicking on quick spawn button
+        const spawnBtn = e.target.closest('.quick-spawn-btn');
+        if (spawnBtn && AppState.isManagerMode) {
+          e.stopPropagation();
+          const parentId = spawnBtn.getAttribute('data-spawn');
+          openSpawnModal(parentId);
+          return;
+        }
+
+        // If clicking blank canvas
+        if (e.target === DOM.canvasViewport || e.target.id === 'canvas-world' || e.target.tagName === 'svg') {
+          AppState.isDraggingCanvas = true;
+          AppState.dragStart = { x: e.clientX - AppState.pan.x, y: e.clientY - AppState.pan.y };
+          AppState.selectedNodeId = null;
+          AppState.multiSelectNodeIds = [];
+          updateInspector();
+          renderCurrentFlow();
+        }
+      });
+
+      window.addEventListener('mousemove', (e) => {
+        if (AppState.isDraggingCanvas) {
+          AppState.pan.x = e.clientX - AppState.dragStart.x;
+          AppState.pan.y = e.clientY - AppState.dragStart.y;
+          applyCanvasTransform();
+          return;
+        }
+
+        if (AppState.dragNode && AppState.isManagerMode) {
+          const worldCoords = screenToWorld(e.clientX, e.clientY);
+          AppState.dragNode.x = Math.round((worldCoords.x - AppState.nodeDragOffset.x) / 10) * 10;
+          AppState.dragNode.y = Math.round((worldCoords.y - AppState.nodeDragOffset.y) / 10) * 10;
+
+          // Update DOM node position directly for performance
+          const el = document.getElementById(`node-${AppState.dragNode.id}`);
+          if (el) {
+            el.style.left = `${AppState.dragNode.x}px`;
+            el.style.top = `${AppState.dragNode.y}px`;
+          }
+          renderConnections();
+        }
+      });
+
+      window.addEventListener('mouseup', () => {
+        if (AppState.isDraggingCanvas) {
+          AppState.isDraggingCanvas = false;
+        }
+        if (AppState.dragNode) {
+          AppState.dragNode = null;
+          if (AppState.isManagerMode) {
+            saveToStorage();
+            pushHistory();
+          }
+        }
+      });
+
+      window.addEventListener('mousemove', (e) => {
+        if (AppState.isDraggingCanvas) {
+          AppState.pan.x = e.clientX - AppState.dragStart.x;
+          AppState.pan.y = e.clientY - AppState.dragStart.y;
+          applyCanvasTransform();
+          return;
+        }
+
+        if (AppState.dragNode) {
+          const worldCoords = screenToWorld(e.clientX, e.clientY);
+          AppState.dragNode.x = Math.round((worldCoords.x - AppState.nodeDragOffset.x) / 10) * 10;
+          AppState.dragNode.y = Math.round((worldCoords.y - AppState.nodeDragOffset.y) / 10) * 10;
+
+          // Update DOM node position directly for performance
+          const el = document.getElementById(`node-${AppState.dragNode.id}`);
+          if (el) {
+            el.style.left = `${AppState.dragNode.x}px`;
+            el.style.top = `${AppState.dragNode.y}px`;
+          }
+          renderConnections();
+        }
+      });
+
+      window.addEventListener('mouseup', () => {
+        if (AppState.isDraggingCanvas) {
+          AppState.isDraggingCanvas = false;
+        }
+        if (AppState.dragNode) {
+          AppState.dragNode = null;
+          saveToStorage();
+          pushHistory();
+        }
+      });
+
+      // Wheel zoom
+      DOM.canvasViewport.addEventListener('wheel', (e) => {
+        e.preventDefault();
+        const factor = e.deltaY < 0 ? 1.1 : 0.9;
+        zoomAt(factor, e.clientX, e.clientY);
+      }, { passive: false });
+
+      // Action Bar Buttons
+      document.getElementById('btn-zoom-in').addEventListener('click', () => zoomAt(1.2));
+      document.getElementById('btn-zoom-out').addEventListener('click', () => zoomAt(0.8));
+      document.getElementById('btn-zoom-reset').addEventListener('click', centerOnFlow);
+      document.getElementById('btn-auto-layout').addEventListener('click', autoArrangeLayout);
+      document.getElementById('btn-undo').addEventListener('click', undo);
+      document.getElementById('btn-redo').addEventListener('click', redo);
+      document.getElementById('btn-delete-node').addEventListener('click', deleteSelectedNode);
+      document.getElementById('btn-clear').addEventListener('click', clearCanvas);
+      document.getElementById('btn-start-flow').addEventListener('click', () => addNode('start', 'New Process Start'));
+      document.getElementById('btn-new-tab').addEventListener('click', addNewTabPrompt);
+
+      // Connect mode (connect two selected nodes)
+      document.getElementById('btn-connect-mode').addEventListener('click', connectSelectedNodes);
+
+      // Quick palette buttons
+      document.getElementById('palette-add-start').addEventListener('click', () => addNode('start', 'Start Shift Trigger'));
+      document.getElementById('palette-add-process').addEventListener('click', () => addNode('process', 'Action / AxisCare Step'));
+      document.getElementById('palette-add-decision').addEventListener('click', () => addNode('decision', 'Condition / Question?'));
+      document.getElementById('palette-add-alert').addEventListener('click', () => addNode('alert', 'Escalate to MOD'));
+
+      // Quick Templates Buttons
+      document.querySelectorAll('.template-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const tplKey = btn.getAttribute('data-template');
+          loadTemplateIntoNewTab(tplKey);
+        });
+      });
+
+      // Export / Import / Print
+      document.getElementById('btn-json-export').addEventListener('click', exportJSONBackup);
+      document.getElementById('input-json-import').addEventListener('change', importJSONBackup);
+      document.getElementById('btn-export-svg').addEventListener('click', exportSVG);
+      document.getElementById('btn-print').addEventListener('click', () => window.print());
+
+      // Inspector panel bindings
+      DOM.inpNodeType.addEventListener('change', onInspectorChange);
+      DOM.inpNodeTitle.addEventListener('input', onInspectorChange);
+      DOM.inpNodeDesc.addEventListener('input', onInspectorChange);
+      DOM.inpNodeBranch.addEventListener('input', onInspectorBranchChange);
+      document.getElementById('btn-delete-active-node').addEventListener('click', deleteSelectedNode);
+      document.getElementById('btn-close-inspector').addEventListener('click', () => {
+        DOM.rightInspector.classList.toggle('hidden');
+      });
+      document.getElementById('btn-toggle-inspector').addEventListener('click', () => {
+        DOM.rightInspector.classList.toggle('hidden');
+      });
+
+      // Color pickers in Inspector
+      document.querySelectorAll('.color-picker-dot').forEach(dot => {
+        dot.addEventListener('click', () => {
+          const color = dot.getAttribute('data-color');
+          const proc = getCurrentProcess();
+          const node = proc?.nodes.find(n => n.id === AppState.selectedNodeId);
+          if (node && AppState.isManagerMode) {
+            node.color = color;
+            saveToStorage();
+            renderCurrentFlow();
+            pushHistory();
+          }
+        });
+      });
+
+      // Resize listener to re-center dynamically if panels open or window size changes
+      window.addEventListener('resize', () => {
+        centerOnFlow();
+      });
+
+      // Quick spawn type option selectors
+      document.querySelectorAll('.spawn-type-opt').forEach(opt => {
+        opt.addEventListener('click', () => {
+          document.querySelectorAll('.spawn-type-opt').forEach(o => o.classList.remove('ring-2', 'ring-sky-500'));
+          opt.classList.add('ring-2', 'ring-sky-500');
+          AppState.selectedSpawnType = opt.getAttribute('data-type');
+        });
+      });
+
+      // Quick spawn modal buttons
+      document.getElementById('btn-confirm-spawn').addEventListener('click', confirmQuickSpawn);
+      document.getElementById('btn-cancel-spawn').addEventListener('click', closeSpawnModal);
+      document.getElementById('btn-close-spawn-modal').addEventListener('click', closeSpawnModal);
+    }
+
+    function onInspectorChange() {
+      if (!AppState.isManagerMode) return;
+      const proc = getCurrentProcess();
+      const node = proc?.nodes.find(n => n.id === AppState.selectedNodeId);
+      if (!node) return;
+
+      node.type = DOM.inpNodeType.value;
+      node.title = DOM.inpNodeTitle.value;
+      node.desc = DOM.inpNodeDesc.value;
+
+      saveToStorage();
+      renderCurrentFlow();
+    }
+
+    function onInspectorBranchChange() {
+      if (!AppState.isManagerMode) return;
+      const proc = getCurrentProcess();
+      if (!proc || !AppState.selectedNodeId) return;
+
+      const incomingConn = proc.connections.find(c => c.to === AppState.selectedNodeId);
+      if (incomingConn) {
+        incomingConn.label = DOM.inpNodeBranch.value.trim();
+        saveToStorage();
+        renderConnections();
+      }
+    }
+
+    function screenToWorld(clientX, clientY) {
+      const rect = DOM.canvasViewport.getBoundingClientRect();
+      return {
+        x: (clientX - rect.left - AppState.pan.x) / AppState.zoom,
+        y: (clientY - rect.top - AppState.pan.y) / AppState.zoom
+      };
+    }
+
+    function toggleManagerRole() {
+      if (!AppState.isManagerMode) {
+        const pass = prompt('Enter Manager Passcode to unlock editing permissions:');
+        if (pass === null) return;
+        if (pass === AppState.managerPasscode) {
+          AppState.isManagerMode = true;
+          document.body.classList.remove('agent-mode');
+
+          DOM.roleBadge.className = 'flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-semibold bg-amber-950/80 text-amber-300 border border-amber-500/50 shadow-sm';
+          DOM.roleText.textContent = 'Manager Mode (Full Edit)';
+          DOM.roleBtnLabel.textContent = 'Lock to Agent View';
+          DOM.btnToggleRole.className = 'bg-amber-600 hover:bg-amber-500 text-white font-medium px-2.5 py-1 rounded text-xs flex items-center gap-1 border border-amber-400 shadow-sm transition';
+
+          // Enable header editing
+          DOM.headerMainTitle.contentEditable = 'true';
+          DOM.headerVersionBadge.contentEditable = 'true';
+          DOM.headerSubTitle.contentEditable = 'true';
+          DOM.headerMainTitle.classList.add('cursor-text', 'ring-1', 'ring-cyan-400/50', 'bg-white/10');
+          DOM.headerVersionBadge.classList.add('cursor-text', 'ring-1', 'ring-cyan-300');
+          DOM.headerSubTitle.classList.add('cursor-text', 'ring-1', 'ring-cyan-400/50', 'bg-white/10');
+
+          updateInspector();
+          renderProcessTabs();
+          renderCurrentFlow();
+          lucide.createIcons();
+          showToast('Manager editing unlocked! Header is now editable.');
+        } else {
+          showToast('Incorrect passcode. View remained locked.');
+        }
+      } else {
+        AppState.isManagerMode = false;
+        document.body.classList.add('agent-mode');
+
+        DOM.roleBadge.className = 'flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-semibold bg-emerald-950/80 text-emerald-300 border border-emerald-600/50 shadow-sm';
+        DOM.roleText.textContent = 'Agent View (Read-Only)';
+        DOM.roleBtnLabel.textContent = 'Unlock Manager Mode';
+        DOM.btnToggleRole.className = 'bg-sky-700 hover:bg-sky-600 text-white font-medium px-2.5 py-1 rounded text-xs flex items-center gap-1 border border-sky-500 shadow-sm transition';
+
+        // Disable header editing
+        DOM.headerMainTitle.contentEditable = 'false';
+        DOM.headerVersionBadge.contentEditable = 'false';
+        DOM.headerSubTitle.contentEditable = 'false';
+        DOM.headerMainTitle.classList.remove('cursor-text', 'ring-1', 'ring-cyan-400/50', 'bg-white/10');
+        DOM.headerVersionBadge.classList.remove('cursor-text', 'ring-1', 'ring-cyan-300');
+        DOM.headerSubTitle.classList.remove('cursor-text', 'ring-1', 'ring-cyan-400/50', 'bg-white/10');
+
+        updateInspector();
+        renderProcessTabs();
+        renderCurrentFlow();
+        lucide.createIcons();
+        showToast('Locked to Agent View (Read-Only)');
+      }
+    }
+
+    function onNodeMouseDown(e, nodeId) {
+      e.stopPropagation();
+
+      const proc = getCurrentProcess();
+      const node = proc.nodes.find(n => n.id === nodeId);
+      if (!node) return;
+
+      if (e.shiftKey && AppState.isManagerMode) {
+        // Multi-select for manual connection
+        if (!AppState.multiSelectNodeIds.includes(nodeId)) {
+          AppState.multiSelectNodeIds.push(nodeId);
+        } else {
+          AppState.multiSelectNodeIds = AppState.multiSelectNodeIds.filter(id => id !== nodeId);
+        }
+      } else {
+        AppState.selectedNodeId = nodeId;
+        AppState.multiSelectNodeIds = [nodeId];
+      }
+
+      if (AppState.isManagerMode) {
+        AppState.dragNode = node;
+        const worldPos = screenToWorld(e.clientX, e.clientY);
+        AppState.nodeDragOffset = {
+          x: worldPos.x - node.x,
+          y: worldPos.y - node.y
+        };
+      }
+
+      updateInspector();
+      renderCurrentFlow();
+    }
+
+    function onNodeDoubleClick(e, nodeId) {
+      e.stopPropagation();
+      if (!AppState.isManagerMode) {
+        // In agent view, just ensure inspector is open
+        DOM.rightInspector.classList.remove('hidden');
+        return;
+      }
+
+      const proc = getCurrentProcess();
+      const node = proc.nodes.find(n => n.id === nodeId);
+      if (!node) return;
+
+      const newTitle = prompt('Edit step title:', node.title);
+      if (newTitle !== null && newTitle.trim()) {
+        node.title = newTitle.trim();
+        saveToStorage();
+        renderCurrentFlow();
+        updateInspector();
+        pushHistory();
+      }
+    }
+
+    /* ==========================================================================
+       SPAWNING CONNECTED CHILD NODES (IMAGE 1 '+' BEHAVIOR)
+       ========================================================================== */
+    function openSpawnModal(parentId) {
+      AppState.spawnParentId = parentId;
+      DOM.spawnInputText.value = '';
+      DOM.spawnInputBranch.value = '';
+      AppState.selectedSpawnType = 'process';
+
+      // Reset selection rings
+      document.querySelectorAll('.spawn-type-opt').forEach((o, i) => {
+        if (i === 0) o.classList.add('ring-2', 'ring-sky-500');
+        else o.classList.remove('ring-2', 'ring-sky-500');
+      });
+
+      DOM.quickSpawnModal.classList.remove('hidden');
+      setTimeout(() => DOM.spawnInputText.focus(), 50);
+    }
+
+    function closeSpawnModal() {
+      DOM.quickSpawnModal.classList.add('hidden');
+      AppState.spawnParentId = null;
+    }
+
+    function confirmQuickSpawn() {
+      const text = DOM.spawnInputText.value.trim() || 'Next Step';
+      const branchLabel = DOM.spawnInputBranch.value.trim();
+      const type = AppState.selectedSpawnType;
+      const parentId = AppState.spawnParentId;
+
+      const proc = getCurrentProcess();
+      const parentNode = proc.nodes.find(n => n.id === parentId);
+      if (!parentNode) {
+        closeSpawnModal();
+        return;
+      }
+
+      // Compute smart offset for child
+      const existingChildren = proc.connections.filter(c => c.from === parentId);
+      const childCount = existingChildren.length;
+
+      let offsetX = (childCount === 0) ? 0 : (childCount % 2 === 1 ? -180 * Math.ceil(childCount / 2) : 180 * Math.ceil(childCount / 2));
+      let offsetY = (type === 'decision' || parentNode.type === 'decision') ? 130 : 120;
+
+      const childId = 'n_' + Date.now();
+      const childNode = {
+        id: childId,
+        type: type,
+        title: text,
+        desc: '',
+        x: Math.max(40, parentNode.x + offsetX),
+        y: parentNode.y + offsetY,
+        color: type === 'alert' ? 'rose' : (type === 'decision' ? 'amber' : 'default')
+      };
+
+      proc.nodes.push(childNode);
+      proc.connections.push({
+        from: parentId,
+        to: childId,
+        label: branchLabel
+      });
+
+      AppState.selectedNodeId = childId;
+      closeSpawnModal();
+      saveToStorage();
+      renderCurrentFlow();
+      updateInspector();
+      pushHistory();
+      showToast('Step connected!');
+    }
+
+    /* ==========================================================================
+       MANUAL NODE CREATION & CONNECTIONS
+       ========================================================================== */
+    function addNode(type = 'process', defaultTitle = 'New Step') {
+      const proc = getCurrentProcess();
+      const rect = DOM.canvasViewport.getBoundingClientRect();
+      const centerWorld = screenToWorld(rect.left + rect.width / 2, rect.top + rect.height / 2);
+
+      const newNode = {
+        id: 'n_' + Date.now(),
+        type: type,
+        title: defaultTitle,
+        desc: '',
+        x: Math.round((centerWorld.x - 100) / 10) * 10,
+        y: Math.round((centerWorld.y - 40) / 10) * 10,
+        color: type === 'alert' ? 'rose' : (type === 'decision' ? 'amber' : (type === 'start' ? 'green' : 'default'))
+      };
+
+      proc.nodes.push(newNode);
+      AppState.selectedNodeId = newNode.id;
+      AppState.multiSelectNodeIds = [newNode.id];
+
+      saveToStorage();
+      renderCurrentFlow();
+      updateInspector();
+      pushHistory();
+    }
+
+    function connectSelectedNodes() {
+      if (AppState.multiSelectNodeIds.length < 2) {
+        showToast('Select 2 nodes using Shift+Click to connect them', 3000);
+        return;
+      }
+      const fromId = AppState.multiSelectNodeIds[0];
+      const toId = AppState.multiSelectNodeIds[1];
+      const proc = getCurrentProcess();
+
+      // Check existing
+      const exists = proc.connections.some(c => c.from === fromId && c.to === toId);
+      if (exists) {
+        showToast('Nodes are already connected');
+        return;
+      }
+
+      const label = prompt('Branch label (e.g. Yes / No / ETA):', '') || '';
+      proc.connections.push({ from: fromId, to: toId, label: label.trim() });
+      saveToStorage();
+      renderCurrentFlow();
+      pushHistory();
+      showToast('Nodes connected');
+    }
+
+    function deleteSelectedNode() {
+      if (!AppState.selectedNodeId) return;
+      const proc = getCurrentProcess();
+      const id = AppState.selectedNodeId;
+
+      proc.nodes = proc.nodes.filter(n => n.id !== id);
+      proc.connections = proc.connections.filter(c => c.from !== id && c.to !== id);
+
+      AppState.selectedNodeId = null;
+      AppState.multiSelectNodeIds = [];
+      saveToStorage();
+      renderCurrentFlow();
+      updateInspector();
+      pushHistory();
+      showToast('Deleted node');
+    }
+
+    function clearCanvas() {
+      if (confirm('Clear all steps in this flow?')) {
+        const proc = getCurrentProcess();
+        proc.nodes = [];
+        proc.connections = [];
+        AppState.selectedNodeId = null;
+        saveToStorage();
+        renderCurrentFlow();
+        updateInspector();
+        pushHistory();
+      }
+    }
+
+    /* ==========================================================================
+       AUTO-ARRANGE LAYOUT (TREE-BASED TIDY ALGORITHM)
+       ========================================================================== */
+    function autoArrangeLayout() {
+      const proc = getCurrentProcess();
+      if (!proc || !proc.nodes.length) return;
+
+      // Find root nodes (no incoming connections)
+      const incoming = new Set(proc.connections.map(c => c.to));
+      let roots = proc.nodes.filter(n => !incoming.has(n.id));
+      if (!roots.length) roots = [proc.nodes[0]];
+
+      const visited = new Set();
+      const levels = {};
+
+      function traverse(nodeId, depth) {
+        if (visited.has(nodeId)) return;
+        visited.add(nodeId);
+        if (!levels[depth]) levels[depth] = [];
+        levels[depth].push(nodeId);
+
+        const out = proc.connections.filter(c => c.from === nodeId).map(c => c.to);
+        out.forEach(childId => traverse(childId, depth + 1));
+      }
+
+      roots.forEach(r => traverse(r.id, 0));
+
+      // Any remaining disconnected nodes
+      proc.nodes.forEach(n => {
+        if (!visited.has(n.id)) {
+          if (!levels[0]) levels[0] = [];
+          levels[0].push(n.id);
+        }
+      });
+
+      // Position nodes by level
+      const startX = 400;
+      const levelHeight = 130;
+
+      Object.keys(levels).forEach(levelStr => {
+        const depth = parseInt(levelStr);
+        const nodeIds = levels[depth];
+        const rowWidth = (nodeIds.length - 1) * 250;
+        const rowStartX = startX - rowWidth / 2;
+
+        nodeIds.forEach((id, idx) => {
+          const node = proc.nodes.find(n => n.id === id);
+          if (node) {
+            node.x = Math.round(rowStartX + idx * 250);
+            node.y = 50 + depth * levelHeight;
+          }
+        });
+      });
+
+      saveToStorage();
+      renderCurrentFlow();
+      centerOnFlow();
+      pushHistory();
+      showToast('Arranged flowchart cleanly');
+    }
+
+    /* ==========================================================================
+       INSPECTOR PANEL & SCRIPT HELPERS
+       ========================================================================== */
+    function updateInspector() {
+      const proc = getCurrentProcess();
+      const node = proc?.nodes.find(n => n.id === AppState.selectedNodeId);
+
+      if (!node) {
+        DOM.inspectorNoSelection.classList.remove('hidden');
+        DOM.inspectorEditor.classList.add('hidden');
+        DOM.inspectorReadonlyView.classList.add('hidden');
+        return;
+      }
+
+      DOM.inspectorNoSelection.classList.add('hidden');
+
+      // Find connecting incoming label
+      const incomingConn = proc.connections.find(c => c.to === node.id);
+
+      if (AppState.isManagerMode) {
+        DOM.inspectorReadonlyView.classList.add('hidden');
+        DOM.inspectorEditor.classList.remove('hidden');
+
+        DOM.inpNodeType.value = node.type;
+        DOM.inpNodeTitle.value = node.title || '';
+        DOM.inpNodeDesc.value = node.desc || '';
+        DOM.inpNodeBranch.value = incomingConn ? (incomingConn.label || '') : '';
+      } else {
+        // Read-only view for agents
+        DOM.inspectorEditor.classList.add('hidden');
+        DOM.inspectorReadonlyView.classList.remove('hidden');
+
+        const typeLabels = {
+          start: 'Trigger / Start',
+          process: 'Process Action',
+          decision: 'Decision / Check',
+          alert: 'MOD Escalation',
+          end: 'Resolution'
+        };
+        DOM.roNodeTypeBadge.textContent = typeLabels[node.type] || 'Step';
+        DOM.roNodeTitle.textContent = node.title;
+        DOM.roNodeDesc.textContent = node.desc || 'Follow standard On-Call procedure for this step.';
+
+        if (incomingConn && incomingConn.label) {
+          DOM.roNodeBranchBox.classList.remove('hidden');
+          DOM.roNodeBranch.textContent = incomingConn.label;
+        } else {
+          DOM.roNodeBranchBox.classList.add('hidden');
+        }
+      }
+    }
+
+    // Snippet copy function
+    window.copySnippetText = function(el) {
+      const text = el.querySelector('p').innerText;
+      copyToClipboard(text);
+      showToast('Copied script to clipboard!');
+    };
+
+    function copyToClipboard(text) {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).catch(() => fallbackCopy(text));
+      } else {
+        fallbackCopy(text);
+      }
+    }
+
+    function fallbackCopy(text) {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+    }
+
+    /* ==========================================================================
+       UNDO / REDO ENGINE
+       ========================================================================== */
+    function pushHistory() {
+      const snapshot = JSON.stringify(AppState.processes);
+      if (AppState.historyIndex < AppState.history.length - 1) {
+        AppState.history = AppState.history.slice(0, AppState.historyIndex + 1);
+      }
+      AppState.history.push(snapshot);
+      if (AppState.history.length > AppState.maxHistory) {
+        AppState.history.shift();
+      } else {
+        AppState.historyIndex++;
+      }
+    }
+
+    function undo() {
+      if (AppState.historyIndex > 0) {
+        AppState.historyIndex--;
+        AppState.processes = JSON.parse(AppState.history[AppState.historyIndex]);
+        saveToStorage();
+        renderProcessTabs();
+        renderCurrentFlow();
+        updateInspector();
+        showToast('Undo');
+      }
+    }
+
+    function redo() {
+      if (AppState.historyIndex < AppState.history.length - 1) {
+        AppState.historyIndex++;
+        AppState.processes = JSON.parse(AppState.history[AppState.historyIndex]);
+        saveToStorage();
+        renderProcessTabs();
+        renderCurrentFlow();
+        updateInspector();
+        showToast('Redo');
+      }
+    }
+
+    /* ==========================================================================
+       IMPORT / EXPORT / BACKUP (TEAM SUSTAINABILITY)
+       ========================================================================== */
+    function exportJSONBackup() {
+      const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(AppState.processes, null, 2));
+      const downloadAnchor = document.createElement('a');
+      downloadAnchor.setAttribute('href', dataStr);
+      downloadAnchor.setAttribute('download', `Evergreen_SOP_Flows_${new Date().toISOString().slice(0,10)}.json`);
+      document.body.appendChild(downloadAnchor);
+      downloadAnchor.click();
+      downloadAnchor.remove();
+      showToast('JSON backup downloaded');
+    }
+
+    function importJSONBackup(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        try {
+          const imported = JSON.parse(event.target.result);
+          if (typeof imported === 'object' && Object.keys(imported).length > 0) {
+            AppState.processes = imported;
+            AppState.activeTabId = Object.keys(imported)[0];
+            saveToStorage();
+            renderProcessTabs();
+            renderCurrentFlow();
+            centerOnFlow();
+            showToast('SOP project restored successfully!');
+          }
+        } catch (err) {
+          alert('Invalid JSON file format.');
+        }
+      };
+      reader.readAsText(file);
+    }
+
+    function exportSVG() {
+      const proc = getCurrentProcess();
+      if (!proc || !proc.nodes.length) {
+        showToast('No flowchart to export');
+        return;
+      }
+
+      // Calculate bounds
+      let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+      proc.nodes.forEach(n => {
+        minX = Math.min(minX, n.x - 20);
+        minY = Math.min(minY, n.y - 20);
+        maxX = Math.max(maxX, n.x + 260);
+        maxY = Math.max(maxY, n.y + 140);
+      });
+
+      const width = maxX - minX;
+      const height = maxY - minY;
+
+      let svgContent = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${minX} ${minY} ${width} ${height}" width="${width}" height="${height}">`;
+      svgContent += `<style>
+        .node-box { font-family: system-ui, sans-serif; }
+        .text-title { font-weight: 700; font-size: 13px; fill: #0f172a; }
+        .text-desc { font-size: 10px; fill: #475569; }
+      </style>`;
+      svgContent += `<rect x="${minX}" y="${minY}" width="${width}" height="${height}" fill="#f8fafc"/>`;
+      
+      // Defs
+      svgContent += DOM.svgPathsGroup.parentElement.querySelector('defs').outerHTML;
+      svgContent += DOM.svgPathsGroup.innerHTML;
+
+      // Nodes render
+      proc.nodes.forEach(n => {
+        if (n.type === 'start' || n.type === 'end') {
+          svgContent += `
+            <g transform="translate(${n.x}, ${n.y})">
+              <rect width="180" height="42" rx="21" fill="#ecfdf5" stroke="#10b981" stroke-width="2"/>
+              <text x="90" y="24" text-anchor="middle" font-weight="bold" font-size="12" fill="#065f46">${escapeHtml(n.title)}</text>
+            </g>
+          `;
+        } else if (n.type === 'decision') {
+          svgContent += `
+            <g transform="translate(${n.x + 88}, ${n.y + 48})">
+              <polygon points="0,-45 80,0 0,45 -80,0" fill="#fef3c7" stroke="#f59e0b" stroke-width="2"/>
+              <text x="0" y="4" text-anchor="middle" font-weight="bold" font-size="11" fill="#78350f">${escapeHtml(n.title)}</text>
+            </g>
+          `;
+        } else {
+          svgContent += `
+            <g transform="translate(${n.x}, ${n.y})">
+              <rect width="220" height="75" rx="8" fill="#ffffff" stroke="#94a3b8" stroke-width="1.5"/>
+              <text x="12" y="25" font-weight="bold" font-size="12" fill="#0f172a">${escapeHtml(n.title)}</text>
+              <text x="12" y="45" font-size="10" fill="#475569">${escapeHtml(n.desc || '')}</text>
+            </g>
+          `;
+        }
+      });
+
+      svgContent += `</svg>`;
+
+      const blob = new Blob([svgContent], { type: 'image/svg+xml;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${proc.name.replace(/\s+/g, '_')}_Flowchart.svg`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      showToast('Exported SVG successfully');
+    }
+
+    function addNewTabPrompt() {
+      const name = prompt('Enter name for the new SOP Flowchart:', 'New Shift Workflow');
+      if (name && name.trim()) {
+        const id = 'flow_' + Date.now();
+        AppState.processes[id] = {
+          id: id,
+          name: name.trim(),
+          nodes: [
+            { id: 'start_1', type: 'start', title: name.trim(), desc: 'Starting Trigger', x: 400, y: 60, color: 'green' }
+          ],
+          connections: []
+        };
+        AppState.activeTabId = id;
+        saveToStorage();
+        renderProcessTabs();
+        renderCurrentFlow();
+        centerOnFlow();
+        pushHistory();
+      }
+    }
+
+    function loadTemplateIntoNewTab(tplKey) {
+      const tpl = SOP_PRESETS[tplKey];
+      if (!tpl) return;
+
+      const id = 'flow_' + Date.now();
+      AppState.processes[id] = {
+        id: id,
+        name: tpl.name,
+        nodes: JSON.parse(JSON.stringify(tpl.nodes)),
+        connections: JSON.parse(JSON.stringify(tpl.connections))
+      };
+      AppState.activeTabId = id;
+      saveToStorage();
+      renderProcessTabs();
+      renderCurrentFlow();
+      centerOnFlow();
+      pushHistory();
+      showToast(`Loaded ${tpl.name} template`);
+    }
+
+    /* ==========================================================================
+       UTILITY HELPERS
+       ========================================================================== */
+    function showToast(msg, duration = 2500) {
+      DOM.toastMessage.textContent = msg;
+      DOM.toast.classList.remove('translate-y-20', 'opacity-0');
+      DOM.toast.classList.add('translate-y-0', 'opacity-100');
+
+      clearTimeout(DOM.toast._timer);
+      DOM.toast._timer = setTimeout(() => {
+        DOM.toast.classList.add('translate-y-20', 'opacity-0');
+        DOM.toast.classList.remove('translate-y-0', 'opacity-100');
+      }, duration);
+    }
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    // Launch Application
+    window.onload = function() {
+      initApp();
+      setTimeout(centerOnFlow, 100);
+    };
+  </script>
+</body>
+</html>
